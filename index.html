@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>扫雷</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: linear-gradient(160deg, #eaf5ec 0%, #f4faf3 45%, #eef7f0 100%);
+    color: #2f4a38;
+    font-family: "Yuanti SC", "YouYuan", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+  .wrap {
+    padding: 22px 24px 24px;
+    background: #ffffff;
+    border-radius: 22px;
+    box-shadow: 0 10px 32px rgba(70, 130, 95, .1);
+    max-width: 100%; overflow: auto;
+  }
+
+  /* ===== 难度按钮 ===== */
+  .toolbar {
+    display: flex; gap: 6px; justify-content: center; margin-bottom: 16px;
+    background: #f1f8f2; padding: 5px; border-radius: 14px;
+  }
+  .toolbar button {
+    flex: 1;
+    padding: 8px 14px; border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #86a392; cursor: pointer;
+    font-size: 13px; letter-spacing: 1px;
+    font-family: inherit; font-weight: 500;
+    transition: all .22s ease;
+  }
+  .toolbar button:hover { color: #4f7d5e; }
+  .toolbar button.active {
+    background: #ffffff;
+    color: #3f7852;
+    box-shadow: 0 2px 8px rgba(70, 130, 95, .14);
+  }
+
+  /* ===== 状态栏 ===== */
+  .hud {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px; padding: 0 4px;
+  }
+  .pill {
+    background: #f1f8f2;
+    padding: 9px 14px; border-radius: 12px;
+    font-size: 13px; min-width: 88px; text-align: center;
+    color: #6f8f7c;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .5px;
+  }
+  #reset {
+    width: 50px; height: 42px; cursor: pointer;
+    border: none; border-radius: 12px;
+    background: #f1f8f2;
+    color: #6f8f7c;
+    display: grid; place-items: center;
+    transition: all .22s cubic-bezier(.34, 1.56, .64, 1);
+    font-family: inherit;
+    padding: 0;
+  }
+  #reset:hover { background: #e5f2e8; color: #3f7852; transform: translateY(-2px); }
+  #reset:active { transform: translateY(1px); background: #dcece0; }
+  #reset.won { color: #6fb884; }
+  #reset svg { display: block; }
+
+  /* ===== 棋盘 ===== */
+  .board {
+    display: grid; gap: 3px; padding: 10px;
+    background: #f1f8f2;
+    border-radius: 16px;
+  }
+  .cell {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    background: #ffffff;
+    border-radius: 8px; cursor: pointer;
+    font-weight: 600; font-size: 16px; line-height: 1;
+    color: #527a5f;
+    box-shadow: 0 1px 3px rgba(70, 130, 95, .08);
+    transition: all .15s ease;
+  }
+  .cell:hover:not(.revealed) {
+    background: #f7fcf8;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(70, 130, 95, .14);
+  }
+  .cell:active:not(.revealed) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(70, 130, 95, .08);
+  }
+  .cell.revealed {
+    background: #eaf4ec;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+  }
+  .cell.flagged {
+    background: #e3f2e6;
+    box-shadow: 0 1px 3px rgba(70, 130, 95, .12);
+  }
+  .cell.win-mine {
+    background: #6fb884;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(70, 130, 95, .28);
+  }
+
+  /* 数字 —— 自然色系 */
+  .n1 { color: #5b9bd5 } /* 湖蓝 */
+  .n2 { color: #5b9e70 } /* 森林绿 */
+  .n3 { color: #d98a8a } /* 陶土粉 */
+  .n4 { color: #9b8cd9 } /* 薰衣草 */
+  .n5 { color: #d4a15a } /* 麦穗黄 */
+  .n6 { color: #5bb8b0 } /* 湖青 */
+  .n7 { color: #7a8f88 } /* 苔藓灰 */
+  .n8 { color: #a8b8ac } /* 浅岩灰 */
+
+  /* ===== 提示条 ===== */
+  .toast {
+    position: fixed; top: 26px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: #6fb884; color: #ffffff;
+    padding: 10px 26px; border-radius: 14px;
+    font-size: 13px; letter-spacing: 1px;
+    font-family: inherit; font-weight: 500;
+    box-shadow: 0 8px 22px rgba(70, 130, 95, .3);
+    opacity: 0;
+    transition: all .3s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== 隐藏长信弹窗 ===== */
+  .letter-overlay {
+    position: fixed; inset: 0;
+    background: rgba(30, 50, 38, .45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .5s ease;
+    z-index: 200;
+  }
+  .letter-overlay.show {
+    opacity: 1; pointer-events: auto;
+  }
+  .letter-card {
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 34px 32px 22px;
+    max-width: 460px;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(30, 60, 45, .3);
+    transform: translateY(14px) scale(.97);
+    transition: transform .55s cubic-bezier(.34, 1.4, .64, 1);
+    line-height: 1.9;
+    font-size: 14.5px;
+    color: #33503c;
+    letter-spacing: .3px;
+  }
+  .letter-overlay.show .letter-card {
+    transform: translateY(0) scale(1);
+  }
+  .letter-card p {
+    margin: 0 0 14px;
+  }
+  .letter-card p:last-of-type {
+    margin-bottom: 0;
+  }
+  /* 底部日期 —— 双击才能关闭 */
+  .letter-date {
+    margin-top: 26px;
+    padding-top: 16px;
+    border-top: 1px dashed #d5e6da;
+    text-align: center;
+    font-size: 12px;
+    color: #9db8a6;
+    letter-spacing: 2px;
+    cursor: pointer;
+    user-select: none;
+    transition: color .25s;
+  }
+  .letter-date:hover { color: #6fb884; }
+  .letter-date .hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #c3d5c9;
+    opacity: .7;
+  }
+
+  /* 滚动条美化 */
+  .letter-card::-webkit-scrollbar { width: 4px; }
+  .letter-card::-webkit-scrollbar-thumb { background: #d5e6da; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <button data-level="easy" class="active">初级</button>
+    <button data-level="medium">中级</button>
+    <button data-level="hard">高级</button>
+  </div>
+  <div class="hud">
+    <div class="pill" id="mineCount">💣 10</div>
+    <button id="reset" aria-label="重新开始"></button>
+    <div class="pill" id="timer">⏱ 0</div>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- 隐藏长信弹窗 -->
+<div class="letter-overlay" id="letterOverlay">
+  <div class="letter-card">
+    <p>在我的设想里，你应该是看不到这段文字的，毕竟我实在无法想象，你会去玩一百零一局扫雷。</p>
+    <p>你细心、敏感，对待感情真挚。那些我向来讨厌的男性特质，在你身上几乎看不到。</p>
+    <p>如果硬要对你在我写下这段文字时，你当下的状态进行描述，我认为是低谷后的向上走。环境似乎赋予了你很多标签与包袱，什么年纪该有什么，什么时间该做什么之类的，但这些真的重要吗？或许永远没办法找到一个准确的答案，最起码对于现在的我来说，我觉得这就是因为对人生失去了掌控权或是失去了希望，才会选择出的遵照大多数人的步伐生活。</p>
+    <p>你可以说是我年少轻狂富有活力，也可以说我未经社会毒打，这些都不重要。此刻我只想说：</p>
+    <p>我会祝愿你找到热爱之事，有一个灿烂的前程；祝愿你在未来的人生中依旧能获得幸福；祝愿你永远健康，永远不会对生活失去希望；祝愿你无论何时仍有重新出发的勇气；祝愿你接下来的每一天，都会过得越来越好。</p>
+    <div class="letter-date" id="letterDate">
+      2026年9月20日
+      <span class="hint">双击此处关闭</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 图标（简约线条 SVG） ============ */
+const ICON_RESET = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5v5h5"/></svg>';
+const ICON_WIN   = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L20 6.5"/></svg>';
+
+/* ============ 通关文案 ============ */
+/* 前 9 句随机出现在「翻开到只剩雷数」的胜利中 */
+const WIN_QUOTES = [
+  '希望你有重新出发的勇气',
+  '行至水穷处，坐看云起时',
+  '云开雾散，安然无恙',
+  '如释重负，风轻云淡',
+  '每一步都算数',
+  '拨云见日，豁然开朗',
+  '心安即是归处',
+  '静水流深，从容自在',
+  '夕阳亦是晨光',
+];
+/* 第 10 句是隐藏长信，只在第 101 次（及以后）胜利时以弹窗出现 */
+
+/* ============ 配置 ============ */
+const LEVELS = {
+  easy:   { rows: 9,  cols: 9,  mines: 10 },
+  medium: { rows: 16, cols: 16, mines: 40 },
+  hard:   { rows: 16, cols: 30, mines: 99 },
+};
+const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+
+/* ============ localStorage 安全读写（无痕模式下也不会崩） ============ */
+function safeGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function safeSet(key, val) {
+  try { localStorage.setItem(key, val); } catch (e) { /* 忽略 */ }
+}
+
+/* ============ 状态 ============ */
+const boardEl = document.getElementById('board');
+const mineEl  = document.getElementById('mineCount');
+const timerEl = document.getElementById('timer');
+const faceEl  = document.getElementById('reset');
+const toastEl = document.getElementById('toast');
+const letterOverlay = document.getElementById('letterOverlay');
+const letterDateEl  = document.getElementById('letterDate');
+
+let cfg = LEVELS.easy;
+let board = [];
+let started = false;
+let gameOver = false;
+let flags = 0;
+let revealedCount = 0;
+let time = 0;
+let timerId = null;
+let suppressClick = false;
+let longPressTimer = null;
+
+/* 通关次数（持久化，刷新不清零；无痕模式下退化为内存计数） */
+let winCount = parseInt(safeGet('minesweeper_win_count') || '0', 10);
+if (isNaN(winCount)) winCount = 0;
+
+/* 隐藏长信是否已经关闭过 */
+let letterShown = safeGet('minesweeper_letter_shown') === '1';
+
+/* ============ 工具 ============ */
+const cellEl = (r, c) => boardEl.children[r * cfg.cols + c];
+
+function forNeighbors(r, c, fn) {
+  for (const [dr, dc] of DIRS) {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < cfg.rows && cc >= 0 && cc < cfg.cols) fn(rr, cc);
+  }
+}
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+
+function randomQuote() {
+  return WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)];
+}
+
+/* ============ 开新局 ============ */
+function newGame() {
+  clearInterval(timerId); timerId = null;
+  started = false; gameOver = false; suppressClick = false;
+  flags = 0; revealedCount = 0; time = 0;
+
+  board = Array.from({ length: cfg.rows }, () =>
+    Array.from({ length: cfg.cols }, () => ({ mine: false, adj: 0, revealed: false, flagged: false }))
+  );
+
+  boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 32px)`;
+  boardEl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (let r = 0; r < cfg.rows; r++) {
+    for (let c = 0; c < cfg.cols; c++) {
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.dataset.r = r;
+      d.dataset.c = c;
+      frag.appendChild(d);
+    }
+  }
+  boardEl.appendChild(frag);
+
+  faceEl.classList.remove('won');
+  faceEl.innerHTML = ICON_RESET;
+  timerEl.textContent = '⏱ 0';
+  updateMineCount();
+}
+
+/* ============ 布雷（避开首次点击的 3×3 区域） ============ */
+function placeMines(sr, sc) {
+  const total = cfg.rows * cfg.cols;
+  const safe = new Set([sr * cfg.cols + sc]);
+  forNeighbors(sr, sc, (r, c) => safe.add(r * cfg.cols + c));
+
+  const pool = [];
+  for (let i = 0; i < total; i++) if (!safe.has(i)) pool.push(i);
+
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const n = Math.min(cfg.mines, pool.length);
+  for (let i = 0; i < n; i++) {
+    const idx = pool[i];
+    board[(idx / cfg.cols) | 0][idx % cfg.cols].mine = true;
+  }
+
+  recalcNumbers();
+}
+
+/* ============ 重新计算所有格子的周围雷数 ============ */
+function recalcNumbers() {
+  for (let r = 0; r < cfg.rows; r++) {
+    for (let c = 0; c < cfg.cols; c++) {
+      if (board[r][c].mine) { board[r][c].adj = 0; continue; }
+      let cnt = 0;
+      forNeighbors(r, c, (rr, cc) => { if (board[rr][cc].mine) cnt++; });
+      board[r][c].adj = cnt;
+    }
+  }
+}
+
+/* ============ 渲染单个格子 ============ */
+function paint(r, c) {
+  const cell = board[r][c];
+  const el = cellEl(r, c);
+  el.className = 'cell';
+  el.textContent = '';
+  if (cell.revealed) {
+    el.classList.add('revealed');
+    if (cell.adj > 0) {
+      el.textContent = cell.adj;
+      el.classList.add('n' + cell.adj);
+    }
+  } else if (cell.flagged) {
+    el.classList.add('flagged');
+    el.textContent = '🚩';
+  }
+}
+
+/* ============ 重绘全部格子 ============ */
+function repaintAll() {
+  for (let r = 0; r < cfg.rows; r++) {
+    for (let c = 0; c < cfg.cols; c++) paint(r, c);
+  }
+}
+
+/* ============ 把雷从 (r,c) 挪到别的安全格 ============ */
+function relocateMine(r, c) {
+  const candidates = [];
+  for (let rr = 0; rr < cfg.rows; rr++) {
+    for (let cc = 0; cc < cfg.cols; cc++) {
+      const cell = board[rr][cc];
+      if (!cell.mine && !cell.revealed && !(rr === r && cc === c)) {
+        candidates.push([rr, cc]);
+      }
+    }
+  }
+  if (candidates.length === 0) return false;
+
+  const [nr, nc] = candidates[Math.floor(Math.random() * candidates.length)];
+  board[r][c].mine = false;
+  board[nr][nc].mine = true;
+  return true;
+}
+
+/* ============ 翻开（flood fill） ============ */
+function floodReveal(r, c) {
+  const stack = [[r, c]];
+  while (stack.length) {
+    const [rr, cc] = stack.pop();
+    const cell = board[rr][cc];
+    if (cell.revealed || cell.flagged) continue;
+    cell.revealed = true;
+    revealedCount++;
+    paint(rr, cc);
+    if (cell.adj === 0) {
+      forNeighbors(rr, cc, (a, b) => {
+        if (!board[a][b].revealed && !board[a][b].flagged) stack.push([a, b]);
+      });
+    }
+  }
+}
+
+/* ============ 插旗 ============ */
+function toggleFlag(r, c) {
+  if (gameOver) return;
+  const cell = board[r][c];
+  if (cell.revealed) return;
+  cell.flagged = !cell.flagged;
+  flags += cell.flagged ? 1 : -1;
+  paint(r, c);
+  updateMineCount();
+  checkWin();
+}
+
+function updateMineCount() {
+  mineEl.textContent = '💣 ' + Math.max(0, cfg.mines - flags);
+}
+
+/* ============ 计时 ============ */
+function startTimer() {
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    time++;
+    timerEl.textContent = '⏱ ' + time;
+  }, 1000);
+}
+function stopTimer() { clearInterval(timerId); timerId = null; }
+
+/* ============ 胜利判定（两种方式） ============ */
+function checkWin() {
+  if (gameOver) return;
+
+  let allMinesFlagged = true;
+  let wrongFlags = 0;
+  for (let r = 0; r < cfg.rows; r++) {
+    for (let c = 0; c < cfg.cols; c++) {
+      const cell = board[r][c];
+      if (cell.mine && !cell.flagged) allMinesFlagged = false;
+      if (!cell.mine && cell.flagged) wrongFlags++;
+    }
+  }
+  if (allMinesFlagged && wrongFlags === 0) {
+    win('完美！所有雷都标对了');
+    return;
+  }
+
+  /* 翻开到只剩雷数时：随机抽一句 */
+  if (revealedCount === cfg.rows * cfg.cols - cfg.mines) {
+    win(randomQuote());
+    return;
+  }
+}
+
+/* ============ 胜利处理 ============ */
+function win(msg) {
+  gameOver = true;
+  stopTimer();
+  faceEl.classList.add('won');
+  faceEl.innerHTML = ICON_WIN;
+
+  recalcNumbers();
+
+  for (let r = 0; r < cfg.rows; r++) {
+    for (let c = 0; c < cfg.cols; c++) {
+      const cell = board[r][c];
+      if (cell.mine) {
+        cell.flagged = true;
+        const el = cellEl(r, c);
+        el.className = 'cell win-mine';
+        el.textContent = '🚩';
+      } else {
+        paint(r, c);
+      }
+    }
+  }
+  flags = cfg.mines;
+  updateMineCount();
+
+  /* 累计通关次数 */
+  winCount++;
+  safeSet('minesweeper_win_count', String(winCount));
+
+  /* 第 101 局及以后：只要还没关闭过长信，就一定会弹出来 */
+  if (winCount >= 101 && !letterShown) {
+    showToast(msg);
+    setTimeout(openLetter, 900);
+  } else {
+    showToast(msg);
+  }
+}
+
+/* ============ 隐藏长信弹窗 ============ */
+function openLetter() {
+  letterOverlay.classList.add('show');
+}
+
+/* 双击底部日期关闭（400ms 内两次点击才算） */
+let dateClickTimer = null;
+let dateClickCount = 0;
+letterDateEl.addEventListener('click', () => {
+  dateClickCount++;
+  clearTimeout(dateClickTimer);
+  if (dateClickCount >= 2) {
+    dateClickCount = 0;
+    letterOverlay.classList.remove('show');
+    letterShown = true;
+    safeSet('minesweeper_letter_shown', '1');
+  } else {
+    dateClickTimer = setTimeout(() => { dateClickCount = 0; }, 400);
+  }
+});
+
+/* ============ 点击处理（点哪都不会是雷） ============ */
+boardEl.addEventListener('click', (e) => {
+  if (suppressClick) { suppressClick = false; return; }
+  const el = e.target.closest('.cell');
+  if (!el || gameOver) return;
+
+  const r = +el.dataset.r, c = +el.dataset.c;
+  const cell = board[r][c];
+  if (cell.flagged || cell.revealed) return;
+
+  if (!started) {
+    started = true;
+    placeMines(r, c);
+    startTimer();
+  }
+
+  if (cell.mine) {
+    const moved = relocateMine(r, c);
+    if (moved) {
+      recalcNumbers();
+      repaintAll();
+    }
+  }
+
+  floodReveal(r, c);
+  checkWin();
+});
+
+boardEl.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (gameOver) return;
+  const el = e.target.closest('.cell');
+  if (!el) return;
+  toggleFlag(+el.dataset.r, +el.dataset.c);
+});
+
+/* 移动端：长按插旗 */
+boardEl.addEventListener('touchstart', (e) => {
+  const el = e.target.closest('.cell');
+  if (!el || gameOver) return;
+  suppressClick = false;
+  longPressTimer = setTimeout(() => {
+    suppressClick = true;
+    toggleFlag(+el.dataset.r, +el.dataset.c);
+  }, 350);
+}, { passive: true });
+
+boardEl.addEventListener('touchend', () => {
+  clearTimeout(longPressTimer);
+  setTimeout(() => { suppressClick = false; }, 300);
+}, { passive: true });
+
+boardEl.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
+
+/* 难度切换 */
+document.querySelectorAll('.toolbar button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toolbar button').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    cfg = LEVELS[btn.dataset.level];
+    newGame();
+  });
+});
+
+faceEl.addEventListener('click', newGame);
+
+/* 启动 */
+newGame();
+</script>
+</body>
+</html>
