@@ -1,629 +1,1690 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>扫雷</title>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; display: grid; place-items: center;
-    background: linear-gradient(160deg, #eaf5ec 0%, #f4faf3 45%, #eef7f0 100%);
-    color: #2f4a38;
-    font-family: "Yuanti SC", "YouYuan", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-    user-select: none; -webkit-user-select: none;
-  }
-  .wrap {
-    padding: 22px 24px 24px;
-    background: #ffffff;
-    border-radius: 22px;
-    box-shadow: 0 10px 32px rgba(70, 130, 95, .1);
-    max-width: 100%; overflow: auto;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五十音学习</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #4A90A4;
+      --primary-dark: #3D7A8A;
+      --primary-soft: #E8F2F5;
+      --primary-glow: rgba(74, 144, 164, 0.18);
 
-  /* ===== 难度按钮 ===== */
-  .toolbar {
-    display: flex; gap: 6px; justify-content: center; margin-bottom: 16px;
-    background: #f1f8f2; padding: 5px; border-radius: 14px;
-  }
-  .toolbar button {
-    flex: 1;
-    padding: 8px 14px; border-radius: 10px;
-    border: none;
-    background: transparent;
-    color: #86a392; cursor: pointer;
-    font-size: 13px; letter-spacing: 1px;
-    font-family: inherit; font-weight: 500;
-    transition: all .22s ease;
-  }
-  .toolbar button:hover { color: #4f7d5e; }
-  .toolbar button.active {
-    background: #ffffff;
-    color: #3f7852;
-    box-shadow: 0 2px 8px rgba(70, 130, 95, .14);
-  }
+      --bg: #F5F7F8;
+      --surface-2: #F8FAFB;
+      --surface-3: #EEF2F4;
 
-  /* ===== 状态栏 ===== */
-  .hud {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; margin-bottom: 14px; padding: 0 4px;
-  }
-  .pill {
-    background: #f1f8f2;
-    padding: 9px 14px; border-radius: 12px;
-    font-size: 13px; min-width: 88px; text-align: center;
-    color: #6f8f7c;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: .5px;
-  }
-  #reset {
-    width: 50px; height: 42px; cursor: pointer;
-    border: none; border-radius: 12px;
-    background: #f1f8f2;
-    color: #6f8f7c;
-    display: grid; place-items: center;
-    transition: all .22s cubic-bezier(.34, 1.56, .64, 1);
-    font-family: inherit;
-    padding: 0;
-  }
-  #reset:hover { background: #e5f2e8; color: #3f7852; transform: translateY(-2px); }
-  #reset:active { transform: translateY(1px); background: #dcece0; }
-  #reset.won { color: #6fb884; }
-  #reset svg { display: block; }
+      --border: #E8EDEF;
+      --border-strong: #D8E1E5;
 
-  /* ===== 棋盘 ===== */
-  .board {
-    display: grid; gap: 3px; padding: 10px;
-    background: #f1f8f2;
-    border-radius: 16px;
-  }
-  .cell {
-    width: 32px; height: 32px; display: grid; place-items: center;
-    background: #ffffff;
-    border-radius: 8px; cursor: pointer;
-    font-weight: 600; font-size: 16px; line-height: 1;
-    color: #527a5f;
-    box-shadow: 0 1px 3px rgba(70, 130, 95, .08);
-    transition: all .15s ease;
-  }
-  .cell:hover:not(.revealed) {
-    background: #f7fcf8;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(70, 130, 95, .14);
-  }
-  .cell:active:not(.revealed) {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(70, 130, 95, .08);
-  }
-  .cell.revealed {
-    background: #eaf4ec;
-    cursor: default;
-    box-shadow: none;
-    transform: none;
-  }
-  .cell.flagged {
-    background: #e3f2e6;
-    box-shadow: 0 1px 3px rgba(70, 130, 95, .12);
-  }
-  .cell.win-mine {
-    background: #6fb884;
-    color: #ffffff;
-    box-shadow: 0 2px 6px rgba(70, 130, 95, .28);
-  }
+      --text-1: #2C3E44;
+      --text-2: #7A8B92;
+      --text-3: #A8B5BB;
 
-  /* 数字 —— 自然色系 */
-  .n1 { color: #5b9bd5 } /* 湖蓝 */
-  .n2 { color: #5b9e70 } /* 森林绿 */
-  .n3 { color: #d98a8a } /* 陶土粉 */
-  .n4 { color: #9b8cd9 } /* 薰衣草 */
-  .n5 { color: #d4a15a } /* 麦穗黄 */
-  .n6 { color: #5bb8b0 } /* 湖青 */
-  .n7 { color: #7a8f88 } /* 苔藓灰 */
-  .n8 { color: #a8b8ac } /* 浅岩灰 */
+      --success: #5FAF92;
+      --success-soft: #E5F3EC;
+      --success-text: #3A7D5C;
+      --danger: #E08888;
+      --danger-dark: #C97272;
+      --danger-soft: #FAE8E8;
+      --danger-text: #B85C5C;
+      --star: #E8B84B;
 
-  /* ===== 提示条 ===== */
-  .toast {
-    position: fixed; top: 26px; left: 50%;
-    transform: translateX(-50%) translateY(-8px);
-    background: #6fb884; color: #ffffff;
-    padding: 10px 26px; border-radius: 14px;
-    font-size: 13px; letter-spacing: 1px;
-    font-family: inherit; font-weight: 500;
-    box-shadow: 0 8px 22px rgba(70, 130, 95, .3);
-    opacity: 0;
-    transition: all .3s ease;
-    pointer-events: none;
-    z-index: 100;
-  }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      --shadow-card: 0 4px 12px rgba(44, 62, 68, 0.06);
+      --shadow-card-lg: 0 8px 24px rgba(44, 62, 68, 0.08);
+      --shadow-glow: 0 4px 12px var(--primary-glow);
+      --shadow-modal: 0 10px 40px rgba(44, 62, 68, 0.15);
 
-  /* ===== 隐藏长信弹窗 ===== */
-  .letter-overlay {
-    position: fixed; inset: 0;
-    background: rgba(30, 50, 38, .45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-    opacity: 0; pointer-events: none;
-    transition: opacity .5s ease;
-    z-index: 200;
-  }
-  .letter-overlay.show {
-    opacity: 1; pointer-events: auto;
-  }
-  .letter-card {
-    background: #ffffff;
-    border-radius: 22px;
-    padding: 34px 32px 22px;
-    max-width: 460px;
-    width: 100%;
-    max-height: 82vh;
-    overflow-y: auto;
-    box-shadow: 0 24px 60px rgba(30, 60, 45, .3);
-    transform: translateY(14px) scale(.97);
-    transition: transform .55s cubic-bezier(.34, 1.4, .64, 1);
-    line-height: 1.9;
-    font-size: 14.5px;
-    color: #33503c;
-    letter-spacing: .3px;
-  }
-  .letter-overlay.show .letter-card {
-    transform: translateY(0) scale(1);
-  }
-  .letter-card p {
-    margin: 0 0 14px;
-  }
-  .letter-card p:last-of-type {
-    margin-bottom: 0;
-  }
-  /* 底部日期 —— 双击才能关闭 */
-  .letter-date {
-    margin-top: 26px;
-    padding-top: 16px;
-    border-top: 1px dashed #d5e6da;
-    text-align: center;
-    font-size: 12px;
-    color: #9db8a6;
-    letter-spacing: 2px;
-    cursor: pointer;
-    user-select: none;
-    transition: color .25s;
-  }
-  .letter-date:hover { color: #6fb884; }
-  .letter-date .hint {
-    display: block;
-    margin-top: 6px;
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: #c3d5c9;
-    opacity: .7;
-  }
+      --overlay: rgba(44, 62, 68, 0.35);
+    }
 
-  /* 滚动条美化 */
-  .letter-card::-webkit-scrollbar { width: 4px; }
-  .letter-card::-webkit-scrollbar-thumb { background: #d5e6da; border-radius: 2px; }
-</style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", sans-serif;
+      padding: 20px;
+      padding-top: 40px;
+    }
+
+    .app {
+      width: min(100%, 680px);
+      text-align: center;
+    }
+
+    button {
+      font-size: 15px;
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: none;
+      background: var(--surface-3);
+      color: var(--text-1);
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    button:active { transform: scale(0.98); }
+    button.active { background: var(--primary); color: white; }
+    button.secondary { background: var(--surface-3); color: var(--text-1); }
+    button.danger { background: var(--danger); color: white; }
+    button.danger:hover { background: var(--danger-dark); }
+    .hidden { display: none !important; }
+
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    /* 学习模式：已掌握切换 chip */
+    .learn-chips {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .group-chip {
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--surface-3);
+      color: var(--text-1);
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .group-chip:active { transform: scale(0.96); }
+    .group-chip.active { background: var(--primary); color: white; }
+    .group-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ================= 随机翻卡模式 ================= */
+    .random-card-container { display: flex; justify-content: center; margin-bottom: 16px; }
+    .random-card { width: 260px; height: 170px; cursor: pointer; position: relative; }
+    .random-card-front, .random-card-back {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white;
+      border-radius: 24px; box-shadow: var(--shadow-card-lg); display: flex; flex-direction: column;
+      justify-content: center; align-items: center; transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .random-card-front { z-index: 2; opacity: 1; transform: scale(1); }
+    .random-card-back { z-index: 1; opacity: 0; transform: scale(0.95); }
+    .random-card.flipped .random-card-front { z-index: 1; opacity: 0; transform: scale(0.95); }
+    .random-card.flipped .random-card-back { z-index: 2; opacity: 1; transform: scale(1); }
+    .random-card-front .card-text { font-family: 'Klee One', 'Yomogi', sans-serif; font-size: 80px; font-weight: 600; color: var(--text-1); line-height: 1; }
+    .random-card-kana-row { display: flex; justify-content: center; align-items: baseline; gap: 12px; }
+    .random-card-kana-row .card-kana { font-family: 'Klee One', 'Yomogi', sans-serif; font-size: 48px; font-weight: 600; color: var(--text-1); line-height: 1.1; }
+    .random-card-back .card-romaji { font-size: 24px; font-weight: 600; color: var(--primary); margin-top: 6px; }
+
+    .random-trace-container {
+      position: relative; width: 260px; height: 297.5px; margin: 0 auto 16px auto; border: 2px dashed var(--border-strong);
+      border-radius: 16px; overflow: hidden; background: #fff; touch-action: none;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .clear-icon {
+      position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; border-radius: 50%;
+      background: rgba(255,255,255,0.9); border: 1px solid var(--border); color: var(--text-3); font-size: 18px; line-height: 1;
+      display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 10; transition: all 0.2s;
+    }
+    .clear-icon:hover { background: var(--danger); color: white; border-color: var(--danger); }
+    .random-trace-container .trace-bg, .trace-bg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: space-evenly;
+      align-items: center; font-family: 'Klee One', 'Yomogi', sans-serif; font-size: 110px; color: var(--border);
+      font-weight: 600; pointer-events: none; user-select: none; line-height: 1;
+    }
+    #randomTraceCanvas, #writingCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
+
+    /* ================= 学习模式（四宫格） ================= */
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .card {
+      position: relative; background: white; border-radius: 20px; padding: 20px; box-shadow: var(--shadow-card);
+      cursor: pointer; user-select: none; min-height: 160px; display: flex; flex-direction: column; justify-content: center;
+      align-items: center; transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .card:active { transform: scale(0.97); }
+    .card.revealed { box-shadow: var(--shadow-glow); border: 2px solid var(--primary); }
+    .card-main { font-family: 'Klee One', 'Yomogi', sans-serif; font-size: 56px; line-height: 1.1; font-weight: 600; color: var(--text-1); }
+    .card-revealed-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .card-revealed-kana-row { display: flex; gap: 16px; justify-content: center; align-items: baseline; }
+    .card-revealed-kana { font-family: 'Klee One', 'Yomogi', sans-serif; font-size: 48px; font-weight: 600; color: var(--text-1); line-height: 1.1; }
+    .card-revealed-romaji { font-size: 24px; color: var(--primary); font-weight: 600; margin-top: 8px; }
+    .star-icon {
+      position: absolute; bottom: 10px; right: 12px; font-size: 24px; color: var(--border-strong); cursor: pointer; line-height: 1;
+      transition: color 0.2s, transform 0.15s; z-index: 10; user-select: none;
+    }
+    .star-icon:hover { transform: scale(1.15); }
+    .star-icon.active { color: var(--star); }
+
+    /* 已掌握集合视图：宽高缩减至约二分之一 */
+    .grid-container.mastered-view {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .grid-container.mastered-view .card {
+      min-height: 80px;
+      padding: 10px 6px;
+      border-radius: 12px;
+    }
+    .grid-container.mastered-view .card.revealed {
+      border-width: 1px;
+      box-shadow: 0 2px 6px var(--primary-glow);
+    }
+    .grid-container.mastered-view .card-main { font-size: 28px; }
+    .grid-container.mastered-view .card-revealed-kana-row { gap: 8px; }
+    .grid-container.mastered-view .card-revealed-kana { font-size: 24px; }
+    .grid-container.mastered-view .card-revealed-romaji { font-size: 12px; margin-top: 4px; }
+    .grid-container.mastered-view .star-icon { font-size: 12px; bottom: 4px; right: 6px; }
+
+    .progress { display: flex; justify-content: space-between; color: var(--text-2); font-size: 14px; margin: 16px 4px; }
+    .action-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* ================= 五十音图表模式 ================= */
+    .chart-wrapper { background: white; border-radius: 20px; padding: 20px 10px; box-shadow: var(--shadow-card); overflow-x: auto; }
+    .chart-header { display: flex; justify-content: flex-end; margin-bottom: 10px; padding: 0 10px; }
+    #playChartBtn { font-size: 14px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    #playChartBtn.playing { background: var(--danger); }
+    table { width: 100%; border-collapse: collapse; min-width: 500px; }
+    th, td { border: 1px solid var(--border); padding: 10px 4px; text-align: center; vertical-align: middle; }
+    th { background: var(--surface-2); color: var(--text-3); font-size: 13px; font-weight: 500; }
+    td { cursor: pointer; transition: background 0.1s; user-select: none; position: relative; }
+    td:hover { background: var(--primary-soft); }
+    td.playing-cell { background: var(--primary-soft) !important; box-shadow: inset 0 0 0 2px var(--primary); }
+    .chart-kana-row { display: flex; justify-content: center; gap: 4px; align-items: baseline; }
+    .chart-kana { font-family: 'Klee One', 'Yomogi', sans-serif; font-size: 18px; font-weight: 600; color: var(--text-1); }
+    .chart-romaji { font-size: 12px; color: var(--primary); margin-top: 2px; }
+    .chart-row-title { font-size: 14px; color: var(--text-2); background: var(--surface-2); font-weight: 500; }
+    .section-title { text-align: left; font-size: 14px; color: var(--text-3); margin: 20px 0 8px 4px; font-weight: 600; }
+
+    /* ================= 模式四：玩一下 ================= */
+    .play-menu { 
+      display: flex; flex-direction: column; gap: 20px; padding: 40px 20px; 
+      align-items: center;
+    }
+    .play-menu-btn {
+      width: 75%;
+      font-size: 20px; 
+      padding: 22px;
+      border-radius: 20px; background: white; box-shadow: var(--shadow-card);
+      display: flex; align-items: center; justify-content: center; gap: 15px; cursor: pointer; transition: transform 0.15s;
+    }
+    .play-menu-btn:active { transform: scale(0.97); }
+    .play-menu-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+    .play-menu-icon svg { width: 100%; height: 100%; }
+
+    /* 连连看 + 翻牌子 通用网格（列数/字号由 JS 设置 CSS 变量） */
+    .match-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+      gap: 10px;
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+      max-width: 400px;
+      margin: 0 auto 20px auto;
+    }
+    .match-card {
+      aspect-ratio: 1;
+      background: var(--surface-2);
+      border-radius: 12px;
+      display: flex; justify-content: center; align-items: center;
+      font-family: 'Klee One', 'Yomogi', sans-serif;
+      font-size: var(--grid-font, 32px);
+      font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none;
+      color: var(--text-1);
+    }
+    .match-card.selected { background: var(--primary); color: white; transform: scale(1.05); }
+    .match-card.matched { background: var(--success); color: white; opacity: 0.5; pointer-events: none; }
+
+    /* 翻牌子卡片样式（用户要求保留，颜色不改） */
+    .flip-card {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      display: flex; justify-content: center; align-items: center;
+      font-family: 'Klee One', 'Yomogi', sans-serif;
+      font-size: var(--grid-font, 32px);
+      font-weight: 600; cursor: pointer;
+      transition: all 0.3s; user-select: none;
+      background: #e5e5ea;
+      color: #1c1c1e;
+    }
+    .flip-card.flipped { background: #f5f5f7; color: #000; }
+    .flip-card.matched { background: #e5e5ea; color: #1c1c1e; pointer-events: none; }
+
+    /* 接住它 */
+    .catch-game-container {
+      position: relative; width: 100%; max-width: 400px; height: 525px; margin: 0 auto 10px auto;
+      background: #E8F2F5; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-card-lg); touch-action: none;
+    }
+    #catchCanvas { display: block; width: 100%; height: 100%; }
+    .catch-hud {
+      display: flex; justify-content: space-between; align-items: center; max-width: 400px;
+      margin: 0 auto 10px auto; padding: 0 10px; font-size: 18px; font-weight: 600;
+      color: var(--text-1);
+    }
+    .catch-intro-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px);
+      display: flex; justify-content: center; align-items: center; z-index: 10;
+    }
+    .catch-intro-content { text-align: center; }
+    .catch-intro-content h3 { margin: 0 0 20px 0; color: var(--text-1); font-size: 20px; }
+    .catch-cards { display: flex; gap: 15px; margin-bottom: 25px; justify-content: center; flex-wrap: wrap; }
+    .catch-card {
+      background: white; border: 2px solid var(--border); border-radius: 16px; padding: 15px 20px;
+      display: flex; flex-direction: column; align-items: center; box-shadow: var(--shadow-card); min-width: 80px;
+      cursor: pointer; transition: transform 0.1s, border-color 0.2s;
+    }
+    .catch-card:active { transform: scale(0.95); }
+    .catch-card:hover { border-color: var(--primary); }
+    .card-label { font-size: 12px; color: var(--text-3); margin-bottom: 5px; }
+    .card-kana { font-family: 'Klee One', sans-serif; font-size: 32px; font-weight: 600; color: var(--text-1); }
+    .card-romaji { font-family: 'Klee One', sans-serif; font-size: 24px; font-weight: 600; color: var(--primary); }
+    #catchStartBtn { font-size: 16px; padding: 10px 30px; }
+
+    /* ================= 填空 ================= */
+    /* HUD 对齐白框左右边缘 */
+    .fill-hud {
+      display: flex; justify-content: space-between; align-items: center;
+      max-width: 444px;
+      margin: 0 auto 15px auto;
+      padding: 0;
+      font-size: 18px; font-weight: 600;
+      color: var(--text-1);
+    }
+    .fill-game-container {
+      max-width: 444px;
+      padding: 20px 18px;
+      margin: 0 auto 9px auto;
+      background: white;
+      border-radius: 18px;
+      box-shadow: var(--shadow-card);
+    }
+    .fill-card {
+      padding: 30px 18px;
+      margin-bottom: 17px;
+      min-height: 131px;
+      background: var(--surface-2);
+      border-radius: 18px;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .fill-prompt {
+      font-family: 'Klee One', 'Yomogi', sans-serif;
+      font-size: 71px;
+      font-weight: 600; color: var(--text-1); line-height: 1;
+    }
+    .fill-input-row { display: flex; gap: 11px; margin-bottom: 13px; align-items: stretch; }
+    .fill-input {
+      flex: 1; min-width: 0;
+      font-size: 18px;
+      padding: 12px 16px;
+      border-radius: 11px;
+      border: 1px solid var(--border-strong);
+      background: white;
+      color: var(--text-1);
+      text-align: center;
+      font-family: 'Klee One', 'Yomogi', sans-serif;
+      min-height: 48px; outline: none;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1.5; overflow-wrap: break-word; word-break: break-all;
+    }
+    .fill-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(74, 144, 164, 0.12); }
+    .fill-input:empty:before { content: attr(data-placeholder); color: var(--text-3); pointer-events: none; }
+    .fill-input .ok { color: var(--success-text); background: var(--success-soft); border-radius: 4px; padding: 0 1px; }
+    .fill-input .err { color: var(--danger-text); background: var(--danger-soft); border-radius: 4px; padding: 0 1px; }
+    .fill-input-row button {
+      font-size: 14px;
+      padding: 12px 25px;
+      background: var(--primary); color: white;
+      white-space: nowrap; min-width: 80px; border-radius: 11px;
+    }
+    .fill-result {
+      min-height: 21px;
+      font-size: 13px;
+      font-weight: 600; text-align: center;
+    }
+
+    /* 通用弹窗 */
+    .modal {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--overlay);
+      display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: white; border-radius: 24px; width: 100%; max-width: 440px; padding: 20px;
+      box-shadow: var(--shadow-modal); display: flex; flex-direction: column;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-play-btn { font-size: 15px; padding: 8px 20px; border-radius: 10px; border: none; background: var(--primary); color: white; cursor: pointer; font-weight: 600; }
+    .close-btn { background: none; border: none; font-size: 28px; color: var(--text-3); cursor: pointer; padding: 0 8px; line-height: 1; }
+    .close-btn:hover { color: var(--text-1); }
+    .canvas-container {
+      position: relative; width: 100%; aspect-ratio: 1 / 1; border: 2px dashed var(--border-strong); border-radius: 16px;
+      overflow: hidden; background: #fff; margin-bottom: 16px; touch-action: none;
+    }
+    .modal-footer { display: flex; gap: 10px; justify-content: center; }
+    .modal-footer button { flex: 1; }
+
+    /* 模式选择弹窗 */
+    .mode-select-title { font-size: 18px; font-weight: 600; margin: 0 0 8px 0; color: var(--text-1); }
+    .mode-select-sub { font-size: 13px; color: var(--text-3); margin-bottom: 20px; line-height: 1.6; }
+    .mode-select-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+    .mode-select-btn {
+      font-size: 16px; padding: 18px; border-radius: 14px; border: none;
+      background: var(--surface-2); color: var(--text-1); cursor: pointer;
+      font-weight: 600; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .mode-select-btn:hover:not(:disabled) { background: var(--surface-3); }
+    .mode-select-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #modeSelectModal .modal-footer { justify-content: center; }
+    #modeSelectModal .modal-footer button {
+      background: none; color: var(--primary); padding: 6px 12px;
+      font-size: 15px; border-radius: 0; font-weight: 500; min-width: auto;
+    }
+    #modeSelectModal .modal-footer button:hover { background: none; color: var(--primary-dark); }
+    #modeSelectModal .modal-footer button:active { transform: none; }
+
+    /* 重置确认弹窗 */
+    #resetConfirmModal .modal-content { max-width: 360px; text-align: center; }
+    #resetConfirmModal .mode-select-sub { margin-bottom: 24px; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="toolbar">
-    <button data-level="easy" class="active">初级</button>
-    <button data-level="medium">中级</button>
-    <button data-level="hard">高级</button>
-  </div>
-  <div class="hud">
-    <div class="pill" id="mineCount">💣 10</div>
-    <button id="reset" aria-label="重新开始"></button>
-    <div class="pill" id="timer">⏱ 0</div>
-  </div>
-  <div class="board" id="board"></div>
-</div>
-<div class="toast" id="toast"></div>
+  <div class="app">
+    
+    <div class="nav-buttons">
+      <button id="modeRandomBtn" class="active">随机翻卡</button>
+      <button id="modeLearnBtn">学习模式</button>
+      <button id="modeChartBtn">五十音图表</button>
+      <button id="modePlayBtn">玩一下</button>
+    </div>
 
-<!-- 隐藏长信弹窗 -->
-<div class="letter-overlay" id="letterOverlay">
-  <div class="letter-card">
-    <p>在我的设想里，你应该是看不到这段文字的，毕竟我实在无法想象，你会去玩一百零一局扫雷。</p>
-    <p>你细心、敏感，对待感情真挚。那些我向来讨厌的男性特质，在你身上几乎看不到。</p>
-    <p>如果硬要对你在我写下这段文字时，你当下的状态进行描述，我认为是低谷后的向上走。环境似乎赋予了你很多标签与包袱，什么年纪该有什么，什么时间该做什么之类的，但这些真的重要吗？或许永远没办法找到一个准确的答案，最起码对于现在的我来说，我觉得这就是因为对人生失去了掌控权或是失去了希望，才会选择出的遵照大多数人的步伐生活。</p>
-    <p>你可以说是我年少轻狂富有活力，也可以说我未经社会毒打，这些都不重要。此刻我只想说：</p>
-    <p>我会祝愿你找到热爱之事，有一个灿烂的前程；祝愿你在未来的人生中依旧能获得幸福；祝愿你永远健康，永远不会对生活失去希望；祝愿你无论何时仍有重新出发的勇气；祝愿你接下来的每一天，都会过得越来越好。</p>
-    <div class="letter-date" id="letterDate">
-      2026年9月20日
-      <span class="hint">双击此处关闭</span>
+    <!-- 随机翻卡区域 -->
+    <div id="randomView">
+      <div class="random-card-container">
+        <div id="randomCard" class="random-card">
+          <div class="random-card-front"><div class="card-text" id="randomCardFront">あ</div></div>
+          <div class="random-card-back">
+            <div class="random-card-kana-row">
+              <span class="card-kana" id="randomCardBackMain">あ</span>
+              <span class="card-kana" id="randomCardBackSub">ア</span>
+            </div>
+            <div class="card-romaji" id="randomCardBackRomaji">a</div>
+          </div>
+        </div>
+      </div>
+      <div id="randomTraceContainer" class="random-trace-container hidden">
+        <button id="clearRandomTraceBtn" class="clear-icon" title="清空">×</button>
+        <div class="trace-bg" id="randomTraceBg">あ ア</div>
+        <canvas id="randomTraceCanvas"></canvas>
+      </div>
+      <button id="nextRandomBtn" class="secondary">换一张</button>
+    </div>
+
+    <!-- 学习模式区域 -->
+    <div id="learnView" class="hidden">
+      <div class="learn-chips">
+        <button id="learnMasteredChip" class="group-chip">已掌握(0)</button>
+      </div>
+      <div id="grid" class="grid-container"></div>
+      <div class="progress" id="learnProgress">
+        <span id="progressText">本轮已翻开 0 / 4</span>
+        <span id="masteredText">已掌握 0 / 71</span>
+      </div>
+      <div class="action-buttons" id="learnActions">
+        <button id="nextBatchBtn" class="active">换一组</button>
+        <button id="learnBackBtn" class="secondary hidden">返回</button>
+        <button id="resetBtn" class="secondary hidden">重置进度</button>
+      </div>
+    </div>
+
+    <!-- 图表模式区域 -->
+    <div id="chartView" class="hidden">
+      <div class="chart-wrapper" id="chartContainer">
+        <div class="chart-header"><button id="playChartBtn">播放</button></div>
+      </div>
+    </div>
+
+    <!-- 模式四：玩一下 -->
+    <div id="playView" class="hidden">
+      <div id="playMenu" class="play-menu">
+        <div class="play-menu-btn" id="startCatchGameBtn">
+          <span class="play-menu-icon">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 16 L34 16 L30.5 33 L9.5 33 Z"/>
+              <path d="M13.5 16 C13.5 8.5 26.5 8.5 26.5 16"/>
+              <path d="M15 22 L25 22"/>
+              <path d="M16.5 27 L23.5 27"/>
+            </svg>
+          </span>
+          接住它
+        </div>
+        <div class="play-menu-btn" id="startFillGameBtn">
+          <span class="play-menu-icon">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 33 L10.5 24 L27 6 L34 13 L17.5 31 Z"/>
+              <path d="M10.5 24 L17.5 31"/>
+              <path d="M24 9 L31 16"/>
+              <path d="M7 33 L10.5 24"/>
+            </svg>
+          </span>
+          填个空
+        </div>
+        <div class="play-menu-btn" id="startMatchGameBtn">
+          <span class="play-menu-icon">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="10" cy="20" r="4.5"/>
+              <circle cx="30" cy="20" r="4.5"/>
+              <path d="M14.5 20 L25.5 20" stroke-dasharray="2.5 2.5"/>
+              <path d="M6 20 L3 20"/>
+              <path d="M34 20 L37 20"/>
+            </svg>
+          </span>
+          连连看
+        </div>
+        <div class="play-menu-btn" id="startFlipGameBtn">
+          <span class="play-menu-icon">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="11" width="19" height="23" rx="2.5"/>
+              <rect x="15" y="6" width="19" height="23" rx="2.5"/>
+              <path d="M20 12 L29 12"/>
+              <path d="M20 17 L29 17"/>
+            </svg>
+          </span>
+          翻牌子
+        </div>
+      </div>
+
+      <div id="matchGameView" class="hidden">
+        <div id="matchGrid" class="match-grid"></div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+          <button id="matchRestartBtn" class="secondary">再来一局</button>
+          <button id="matchBackBtn" class="secondary">返回菜单</button>
+        </div>
+      </div>
+
+      <div id="flipGameView" class="hidden">
+        <div id="flipGrid" class="match-grid"></div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+          <button id="flipRestartBtn" class="secondary">再来一局</button>
+          <button id="flipBackBtn" class="secondary">返回菜单</button>
+        </div>
+      </div>
+
+      <div id="catchGameView" class="hidden">
+        <div class="catch-hud">
+          <span>分数: <span id="catchScore">0</span></span>
+          <span id="catchLives">♡♡♡♡♡</span>
+        </div>
+        <div class="catch-game-container" id="catchGameContainer">
+          <canvas id="catchCanvas"></canvas>
+          <div id="catchIntroOverlay" class="catch-intro-overlay hidden">
+            <div class="catch-intro-content">
+              <h3>准备接住！</h3>
+              <div class="catch-cards">
+                <div class="catch-card" id="catchIntroHCard">
+                  <span class="card-label">平假名</span>
+                  <span class="card-kana" id="catchIntroH">あ</span>
+                </div>
+                <div class="catch-card" id="catchIntroKCard">
+                  <span class="card-label">片假名</span>
+                  <span class="card-kana" id="catchIntroK">ア</span>
+                </div>
+                <div class="catch-card" id="catchIntroRCard">
+                  <span class="card-label">读音</span>
+                  <span class="card-romaji" id="catchIntroR">a</span>
+                </div>
+              </div>
+              <button id="catchStartBtn" class="active">开始游戏</button>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+          <button id="catchRestartBtn" class="secondary">再来一局</button>
+          <button id="catchBackBtn" class="secondary">返回菜单</button>
+        </div>
+      </div>
+
+      <div id="fillGameView" class="hidden">
+        <div class="fill-hud">
+          <span>已答对: <span id="fillScore">0</span></span>
+          <span>错误: <span id="fillErrors">0 / 3</span></span>
+        </div>
+        <div class="fill-game-container">
+          <div class="fill-card">
+            <div class="fill-prompt" id="fillPrompt">あ</div>
+          </div>
+          <div class="fill-input-row">
+            <div id="fillInput" class="fill-input" contenteditable="true" data-placeholder="输入答案" spellcheck="false"></div>
+            <button id="fillCheckBtn">检查</button>
+          </div>
+          <div class="fill-result" id="fillResult"></div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+          <button id="fillRestartBtn" class="secondary">重开一局</button>
+          <button id="fillBackBtn" class="secondary">返回菜单</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 书写弹窗 -->
+  <div id="writingModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button id="modalPlayBtn" class="modal-play-btn">播放</button>
+        <button id="closeModalBtn" class="close-btn">×</button>
+      </div>
+      <div class="canvas-container" id="canvasContainer">
+        <div class="trace-bg" id="traceBg">あ ア</div>
+        <canvas id="writingCanvas"></canvas>
+      </div>
+      <div class="modal-footer"><button id="clearCanvasBtn" class="secondary">清空</button></div>
     </div>
   </div>
-</div>
 
-<script>
-/* ============ 图标（简约线条 SVG） ============ */
-const ICON_RESET = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5v5h5"/></svg>';
-const ICON_WIN   = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L20 6.5"/></svg>';
+  <!-- 模式选择弹窗 -->
+  <div id="modeSelectModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 380px;">
+      <div style="text-align: center;">
+        <div class="mode-select-title">选择练习模式</div>
+        <div class="mode-select-sub">请选择本次练习的内容来源</div>
+      </div>
+      <div class="mode-select-options">
+        <button id="selectMasteredBtn" class="mode-select-btn">练习已掌握的词</button>
+        <button id="selectRandomBtn" class="mode-select-btn">随机模式</button>
+      </div>
+      <div class="modal-footer"><button id="cancelSelectBtn">返回</button></div>
+    </div>
+  </div>
 
-/* ============ 通关文案 ============ */
-/* 前 9 句随机出现在「翻开到只剩雷数」的胜利中 */
-const WIN_QUOTES = [
-  '希望你有重新出发的勇气',
-  '行至水穷处，坐看云起时',
-  '云开雾散，安然无恙',
-  '如释重负，风轻云淡',
-  '每一步都算数',
-  '拨云见日，豁然开朗',
-  '心安即是归处',
-  '静水流深，从容自在',
-  '夕阳亦是晨光',
-];
-/* 第 10 句是隐藏长信，只在第 101 次（及以后）胜利时以弹窗出现 */
+  <!-- 重置进度确认弹窗 -->
+  <div id="resetConfirmModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="mode-select-title">重置进度</div>
+      <div class="mode-select-sub">此操作将清空所有已掌握的假名记录，且无法撤销。</div>
+      <div class="modal-footer">
+        <button id="resetCancelBtn" class="secondary">取消</button>
+        <button id="resetConfirmBtn" class="danger">确定重置</button>
+      </div>
+    </div>
+  </div>
 
-/* ============ 配置 ============ */
-const LEVELS = {
-  easy:   { rows: 9,  cols: 9,  mines: 10 },
-  medium: { rows: 16, cols: 16, mines: 40 },
-  hard:   { rows: 16, cols: 30, mines: 99 },
-};
-const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  <!-- 通用提示弹窗 -->
+  <div id="alertModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header"><span id="alertTitle">提示</span></div>
+      <div style="font-size: 18px; margin-bottom: 20px; text-align: center; color: var(--text-1);" id="alertText"></div>
+      <div class="modal-footer"><button id="alertConfirmBtn" class="active">确定</button></div>
+    </div>
+  </div>
 
-/* ============ localStorage 安全读写（无痕模式下也不会崩） ============ */
-function safeGet(key) {
-  try { return localStorage.getItem(key); } catch (e) { return null; }
-}
-function safeSet(key, val) {
-  try { localStorage.setItem(key, val); } catch (e) { /* 忽略 */ }
-}
+  <!-- 接住它专属的游戏结束弹窗 -->
+  <div id="catchGameOverModal" class="modal hidden">
+    <div class="modal-content" style="cursor: pointer; padding: 40px 20px; max-width: 300px;">
+      <div style="font-size: 18px; text-align: center; font-weight: 600; color: var(--text-1);">爱心用完了，再试一次吧！</div>
+    </div>
+  </div>
 
-/* ============ 状态 ============ */
-const boardEl = document.getElementById('board');
-const mineEl  = document.getElementById('mineCount');
-const timerEl = document.getElementById('timer');
-const faceEl  = document.getElementById('reset');
-const toastEl = document.getElementById('toast');
-const letterOverlay = document.getElementById('letterOverlay');
-const letterDateEl  = document.getElementById('letterDate');
-
-let cfg = LEVELS.easy;
-let board = [];
-let started = false;
-let gameOver = false;
-let flags = 0;
-let revealedCount = 0;
-let time = 0;
-let timerId = null;
-let suppressClick = false;
-let longPressTimer = null;
-
-/* 通关次数（持久化，刷新不清零；无痕模式下退化为内存计数） */
-let winCount = parseInt(safeGet('minesweeper_win_count') || '0', 10);
-if (isNaN(winCount)) winCount = 0;
-
-/* 隐藏长信是否已经关闭过 */
-let letterShown = safeGet('minesweeper_letter_shown') === '1';
-
-/* ============ 工具 ============ */
-const cellEl = (r, c) => boardEl.children[r * cfg.cols + c];
-
-function forNeighbors(r, c, fn) {
-  for (const [dr, dc] of DIRS) {
-    const rr = r + dr, cc = c + dc;
-    if (rr >= 0 && rr < cfg.rows && cc >= 0 && cc < cfg.cols) fn(rr, cc);
-  }
-}
-
-function showToast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  setTimeout(() => toastEl.classList.remove('show'), 1800);
-}
-
-function randomQuote() {
-  return WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)];
-}
-
-/* ============ 开新局 ============ */
-function newGame() {
-  clearInterval(timerId); timerId = null;
-  started = false; gameOver = false; suppressClick = false;
-  flags = 0; revealedCount = 0; time = 0;
-
-  board = Array.from({ length: cfg.rows }, () =>
-    Array.from({ length: cfg.cols }, () => ({ mine: false, adj: 0, revealed: false, flagged: false }))
-  );
-
-  boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 32px)`;
-  boardEl.innerHTML = '';
-  const frag = document.createDocumentFragment();
-  for (let r = 0; r < cfg.rows; r++) {
-    for (let c = 0; c < cfg.cols; c++) {
-      const d = document.createElement('div');
-      d.className = 'cell';
-      d.dataset.r = r;
-      d.dataset.c = c;
-      frag.appendChild(d);
-    }
-  }
-  boardEl.appendChild(frag);
-
-  faceEl.classList.remove('won');
-  faceEl.innerHTML = ICON_RESET;
-  timerEl.textContent = '⏱ 0';
-  updateMineCount();
-}
-
-/* ============ 布雷（避开首次点击的 3×3 区域） ============ */
-function placeMines(sr, sc) {
-  const total = cfg.rows * cfg.cols;
-  const safe = new Set([sr * cfg.cols + sc]);
-  forNeighbors(sr, sc, (r, c) => safe.add(r * cfg.cols + c));
-
-  const pool = [];
-  for (let i = 0; i < total; i++) if (!safe.has(i)) pool.push(i);
-
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const n = Math.min(cfg.mines, pool.length);
-  for (let i = 0; i < n; i++) {
-    const idx = pool[i];
-    board[(idx / cfg.cols) | 0][idx % cfg.cols].mine = true;
-  }
-
-  recalcNumbers();
-}
-
-/* ============ 重新计算所有格子的周围雷数 ============ */
-function recalcNumbers() {
-  for (let r = 0; r < cfg.rows; r++) {
-    for (let c = 0; c < cfg.cols; c++) {
-      if (board[r][c].mine) { board[r][c].adj = 0; continue; }
-      let cnt = 0;
-      forNeighbors(r, c, (rr, cc) => { if (board[rr][cc].mine) cnt++; });
-      board[r][c].adj = cnt;
-    }
-  }
-}
-
-/* ============ 渲染单个格子 ============ */
-function paint(r, c) {
-  const cell = board[r][c];
-  const el = cellEl(r, c);
-  el.className = 'cell';
-  el.textContent = '';
-  if (cell.revealed) {
-    el.classList.add('revealed');
-    if (cell.adj > 0) {
-      el.textContent = cell.adj;
-      el.classList.add('n' + cell.adj);
-    }
-  } else if (cell.flagged) {
-    el.classList.add('flagged');
-    el.textContent = '🚩';
-  }
-}
-
-/* ============ 重绘全部格子 ============ */
-function repaintAll() {
-  for (let r = 0; r < cfg.rows; r++) {
-    for (let c = 0; c < cfg.cols; c++) paint(r, c);
-  }
-}
-
-/* ============ 把雷从 (r,c) 挪到别的安全格 ============ */
-function relocateMine(r, c) {
-  const candidates = [];
-  for (let rr = 0; rr < cfg.rows; rr++) {
-    for (let cc = 0; cc < cfg.cols; cc++) {
-      const cell = board[rr][cc];
-      if (!cell.mine && !cell.revealed && !(rr === r && cc === c)) {
-        candidates.push([rr, cc]);
+  <script>
+    // ================= 数据 =================
+    const groups = {
+      seion: {
+        name: '清音',
+        items: [
+          { h: 'あ', k: 'ア', r: 'a' }, { h: 'い', k: 'イ', r: 'i' }, { h: 'う', k: 'ウ', r: 'u' }, { h: 'え', k: 'エ', r: 'e' }, { h: 'お', k: 'オ', r: 'o' },
+          { h: 'か', k: 'カ', r: 'ka' }, { h: 'き', k: 'キ', r: 'ki' }, { h: 'く', k: 'ク', r: 'ku' }, { h: 'け', k: 'ケ', r: 'ke' }, { h: 'こ', k: 'コ', r: 'ko' },
+          { h: 'さ', k: 'サ', r: 'sa' }, { h: 'し', k: 'シ', r: 'shi' }, { h: 'す', k: 'ス', r: 'su' }, { h: 'せ', k: 'セ', r: 'se' }, { h: 'そ', k: 'ソ', r: 'so' },
+          { h: 'た', k: 'タ', r: 'ta' }, { h: 'ち', k: 'チ', r: 'chi' }, { h: 'つ', k: 'ツ', r: 'tsu' }, { h: 'て', k: 'テ', r: 'te' }, { h: 'と', k: 'ト', r: 'to' },
+          { h: 'な', k: 'ナ', r: 'na' }, { h: 'に', k: 'ニ', r: 'ni' }, { h: 'ぬ', k: 'ヌ', r: 'nu' }, { h: 'ね', k: 'ネ', r: 'ne' }, { h: 'の', k: 'ノ', r: 'no' },
+          { h: 'は', k: 'ハ', r: 'ha' }, { h: 'ひ', k: 'ヒ', r: 'hi' }, { h: 'ふ', k: 'フ', r: 'fu' }, { h: 'へ', k: 'ヘ', r: 'he' }, { h: 'ほ', k: 'ホ', r: 'ho' },
+          { h: 'ま', k: 'マ', r: 'ma' }, { h: 'み', k: 'ミ', r: 'mi' }, { h: 'む', k: 'ム', r: 'mu' }, { h: 'め', k: 'メ', r: 'me' }, { h: 'も', k: 'モ', r: 'mo' },
+          { h: 'や', k: 'ヤ', r: 'ya' }, { h: 'ゆ', k: 'ユ', r: 'yu' }, { h: 'よ', k: 'ヨ', r: 'yo' },
+          { h: 'ら', k: 'ラ', r: 'ra' }, { h: 'り', k: 'リ', r: 'ri' }, { h: 'る', k: 'ル', r: 'ru' }, { h: 'れ', k: 'レ', r: 're' }, { h: 'ろ', k: 'ロ', r: 'ro' },
+          { h: 'わ', k: 'ワ', r: 'wa' }, { h: 'を', k: 'ヲ', r: 'wo' }, { h: 'ん', k: 'ン', r: 'n' }
+        ]
+      },
+      dakuon: {
+        name: '浊音',
+        items: [
+          { h: 'が', k: 'ガ', r: 'ga' }, { h: 'ぎ', k: 'ギ', r: 'gi' }, { h: 'ぐ', k: 'グ', r: 'gu' }, { h: 'げ', k: 'ゲ', r: 'ge' }, { h: 'ご', k: 'ゴ', r: 'go' },
+          { h: 'ざ', k: 'ザ', r: 'za' }, { h: 'じ', k: 'ジ', r: 'ji' }, { h: 'ず', k: 'ズ', r: 'zu' }, { h: 'ぜ', k: 'ゼ', r: 'ze' }, { h: 'ぞ', k: 'ゾ', r: 'zo' },
+          { h: 'だ', k: 'ダ', r: 'da' }, { h: 'ぢ', k: 'ヂ', r: 'ji' }, { h: 'づ', k: 'ヅ', r: 'zu' }, { h: 'で', k: 'デ', r: 'de' }, { h: 'ど', k: 'ド', r: 'do' },
+          { h: 'ば', k: 'バ', r: 'ba' }, { h: 'び', k: 'ビ', r: 'bi' }, { h: 'ぶ', k: 'ブ', r: 'bu' }, { h: 'べ', k: 'ベ', r: 'be' }, { h: 'ぼ', k: 'ボ', r: 'bo' }
+        ]
+      },
+      handakuon: {
+        name: '半浊音',
+        items: [
+          { h: 'ぱ', k: 'パ', r: 'pa' }, { h: 'ぴ', k: 'ピ', r: 'pi' }, { h: 'ぷ', k: 'プ', r: 'pu' }, { h: 'ぺ', k: 'ペ', r: 'pe' }, { h: 'ぽ', k: 'ポ', r: 'po' }
+        ]
       }
+    };
+
+    const allKanaItems = [...groups.seion.items, ...groups.dakuon.items, ...groups.handakuon.items];
+    const totalKanaCount = allKanaItems.length;
+    const similarGroups = [
+      ['あ', 'お'], ['ぬ', 'め'], ['わ', 'ね', 'れ'], ['は', 'ほ', 'ま'], ['き', 'さ'], ['る', 'ろ'], ['い', 'り'], ['こ', 'に'],
+      ['し', 'つ'], ['そ', 'ん'], ['せ', 'ぜ'], ['た', 'な'], ['く', 'け', 'わ'], ['う', 'つ'], ['ら', 'り'], ['ち', 'て'], ['み', 'む'],
+      ['シ', 'ツ'], ['ソ', 'ン'], ['ク', 'ケ', 'ワ'], ['ア', 'マ'], ['エ', 'ユ'], ['フ', 'ワ'], ['ヲ', 'ヨ'],
+      ['か', 'が', 'き', 'ぎ'], ['く', 'ぐ', 'け', 'げ'], ['こ', 'ご', 'さ', 'ざ'], ['し', 'じ', 'す', 'ず'], ['せ', 'ぜ', 'そ', 'ぞ'],
+      ['た', 'だ', 'ち', 'ぢ'], ['つ', 'づ', 'て', 'で'], ['と', 'ど', 'は', 'ば'], ['ひ', 'び', 'ふ', 'ぶ'], ['へ', 'べ', 'ほ', 'ぼ'],
+      ['ぱ', 'ぴ', 'ぷ', 'ぺ'], ['ぽ', 'ま', 'み', 'む']
+    ];
+
+    const seionTable = [
+      { row: 'あ行', cells: ['あ', 'い', 'う', 'え', 'お'] }, { row: 'か行', cells: ['か', 'き', 'く', 'け', 'こ'] },
+      { row: 'さ行', cells: ['さ', 'し', 'す', 'せ', 'そ'] }, { row: 'た行', cells: ['た', 'ち', 'つ', 'て', 'と'] },
+      { row: 'な行', cells: ['な', 'に', 'ぬ', 'ね', 'の'] }, { row: 'は行', cells: ['は', 'ひ', 'ふ', 'へ', 'ほ'] },
+      { row: 'ま行', cells: ['ま', 'み', 'む', 'め', 'も'] }, { row: 'や行', cells: ['や', '', 'ゆ', '', 'よ'] },
+      { row: 'ら行', cells: ['ら', 'り', 'る', 'れ', 'ろ'] }, { row: 'わ行', cells: ['わ', '', '', '', 'を'] },
+      { row: 'ん', cells: ['ん', '', '', '', ''] }
+    ];
+    const dakuonTable = [
+      { row: 'が行', cells: ['が', 'ぎ', 'ぐ', 'げ', 'ご'] }, { row: 'ざ行', cells: ['ざ', 'じ', 'ず', 'ぜ', 'ぞ'] },
+      { row: 'だ行', cells: ['だ', 'ぢ', 'づ', 'で', 'ど'] }, { row: 'ば行', cells: ['ば', 'び', 'ぶ', 'べ', 'ぼ'] }
+    ];
+    const handakuonTable = [{ row: 'ぱ行', cells: ['ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'] }];
+
+    const allKanaInfo = {};
+    allKanaItems.forEach(item => allKanaInfo[item.h] = item);
+
+    // ================= 状态 =================
+    let currentMode = 'random';
+    let currentBatch = [], cardStates = [], mastered = JSON.parse(localStorage.getItem('kanaMastered') || '{}');
+    let randomCardData = null, isRandomFlipped = false;
+    let isPlaying = false, playIndex = 0, playTimer = null, playSequence = [], learnClickTimer = null;
+    let currentModalH = '', isModalLooping = false, modalLoopTimer = null, modalClickTimer = null;
+    let chartClickTimer = null;
+    let learnMasteredMode = false;
+
+    let matchCards = [], matchSelected = [];
+    let flipCards = [], flipFirstPick = null, flipLocked = false;
+    let catchGameActive = false, catchAnimationFrame = null;
+    let catchBoxX = 200, catchBoxWidth = 55, catchItems = [], catchLives = 5, catchScore = 0;
+    let lastCatchTime = 0, catchSpawnTimer = 0;
+    let currentCatchIntroItem = null, catchTargetItem = null;
+
+    let currentFillItem = null, fillPromptType = 'h';
+    let fillScore = 0, fillErrors = 0, fillAnswered = false;
+
+    let activeKanaPool = allKanaItems;
+    let pendingGameType = null;
+
+    // ================= DOM =================
+    const modeRandomBtn = document.getElementById('modeRandomBtn');
+    const modeLearnBtn = document.getElementById('modeLearnBtn');
+    const modeChartBtn = document.getElementById('modeChartBtn');
+    const modePlayBtn = document.getElementById('modePlayBtn');
+    const randomView = document.getElementById('randomView');
+    const learnView = document.getElementById('learnView');
+    const chartView = document.getElementById('chartView');
+    const playView = document.getElementById('playView');
+
+    const randomCard = document.getElementById('randomCard');
+    const randomCardFront = document.getElementById('randomCardFront');
+    const randomCardBackMain = document.getElementById('randomCardBackMain');
+    const randomCardBackSub = document.getElementById('randomCardBackSub');
+    const randomCardBackRomaji = document.getElementById('randomCardBackRomaji');
+    const nextRandomBtn = document.getElementById('nextRandomBtn');
+    
+    const randomTraceContainer = document.getElementById('randomTraceContainer');
+    const randomTraceBg = document.getElementById('randomTraceBg');
+    const randomTraceCanvas = document.getElementById('randomTraceCanvas');
+    const randomTraceCtx = randomTraceCanvas.getContext('2d');
+    const clearRandomTraceBtn = document.getElementById('clearRandomTraceBtn');
+    let isRandomDrawing = false, randomLastX = 0, randomLastY = 0, randomCanvasInitialized = false;
+
+    const writingModal = document.getElementById('writingModal');
+    const modalPlayBtn = document.getElementById('modalPlayBtn');
+    const traceBg = document.getElementById('traceBg');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+    const canvas = document.getElementById('writingCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false, lastX = 0, lastY = 0, canvasInitialized = false;
+
+    const learnMasteredChip = document.getElementById('learnMasteredChip');
+    const learnBackBtn = document.getElementById('learnBackBtn');
+    const progressText = document.getElementById('progressText');
+    const nextBatchBtn = document.getElementById('nextBatchBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const playMenu = document.getElementById('playMenu');
+    const startMatchGameBtn = document.getElementById('startMatchGameBtn');
+    const startFlipGameBtn = document.getElementById('startFlipGameBtn');
+    const startCatchGameBtn = document.getElementById('startCatchGameBtn');
+    const startFillGameBtn = document.getElementById('startFillGameBtn');
+
+    const matchGameView = document.getElementById('matchGameView');
+    const matchGrid = document.getElementById('matchGrid');
+    const matchBackBtn = document.getElementById('matchBackBtn');
+    const matchRestartBtn = document.getElementById('matchRestartBtn');
+
+    const flipGameView = document.getElementById('flipGameView');
+    const flipGrid = document.getElementById('flipGrid');
+    const flipBackBtn = document.getElementById('flipBackBtn');
+    const flipRestartBtn = document.getElementById('flipRestartBtn');
+    
+    const catchGameView = document.getElementById('catchGameView');
+    const catchCanvas = document.getElementById('catchCanvas');
+    const catchCtx = catchCanvas.getContext('2d');
+    const catchLivesSpan = document.getElementById('catchLives');
+    const catchScoreSpan = document.getElementById('catchScore');
+    const catchBackBtn = document.getElementById('catchBackBtn');
+    const catchRestartBtn = document.getElementById('catchRestartBtn');
+    const catchIntroOverlay = document.getElementById('catchIntroOverlay');
+    const catchIntroHCard = document.getElementById('catchIntroHCard');
+    const catchIntroKCard = document.getElementById('catchIntroKCard');
+    const catchIntroRCard = document.getElementById('catchIntroRCard');
+    const catchIntroH = document.getElementById('catchIntroH');
+    const catchIntroK = document.getElementById('catchIntroK');
+    const catchIntroR = document.getElementById('catchIntroR');
+    const catchStartBtn = document.getElementById('catchStartBtn');
+
+    const fillGameView = document.getElementById('fillGameView');
+    const fillScoreSpan = document.getElementById('fillScore');
+    const fillErrorsSpan = document.getElementById('fillErrors');
+    const fillPrompt = document.getElementById('fillPrompt');
+    const fillInput = document.getElementById('fillInput');
+    const fillCheckBtn = document.getElementById('fillCheckBtn');
+    const fillResult = document.getElementById('fillResult');
+    const fillRestartBtn = document.getElementById('fillRestartBtn');
+    const fillBackBtn = document.getElementById('fillBackBtn');
+
+    const modeSelectModal = document.getElementById('modeSelectModal');
+    const selectMasteredBtn = document.getElementById('selectMasteredBtn');
+    const selectRandomBtn = document.getElementById('selectRandomBtn');
+    const cancelSelectBtn = document.getElementById('cancelSelectBtn');
+
+    // 重置确认弹窗 DOM
+    const resetConfirmModal = document.getElementById('resetConfirmModal');
+    const resetCancelBtn = document.getElementById('resetCancelBtn');
+    const resetConfirmBtn = document.getElementById('resetConfirmBtn');
+
+    const alertModal = document.getElementById('alertModal');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertText = document.getElementById('alertText');
+    const alertConfirmBtn = document.getElementById('alertConfirmBtn');
+    function showAlert(title, text) {
+      alertTitle.textContent = title; alertText.textContent = text;
+      alertModal.classList.remove('hidden');
     }
-  }
-  if (candidates.length === 0) return false;
+    alertConfirmBtn.addEventListener('click', () => alertModal.classList.add('hidden'));
 
-  const [nr, nc] = candidates[Math.floor(Math.random() * candidates.length)];
-  board[r][c].mine = false;
-  board[nr][nc].mine = true;
-  return true;
-}
+    // ================= 发音 =================
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ja-JP'; utterance.rate = 0.8;
+      const voices = speechSynthesis.getVoices();
+      let jaVoice = voices.find(v => v.name.includes('Kyoko') || v.name.includes('O-ren') || v.name.includes('Hattori'));
+      if (!jaVoice) jaVoice = voices.find(v => (v.lang === 'ja-JP' || v.lang === 'ja_JP') && !v.name.includes('Otoya'));
+      if (!jaVoice) jaVoice = voices.find(v => v.lang === 'ja-JP' || v.lang === 'ja_JP');
+      if (jaVoice) utterance.voice = jaVoice;
+      speechSynthesis.cancel(); speechSynthesis.speak(utterance);
+    }
+    if ('speechSynthesis' in window) {
+      speechSynthesis.onvoiceschanged = () => { speechSynthesis.getVoices(); };
+    }
 
-/* ============ 翻开（flood fill） ============ */
-function floodReveal(r, c) {
-  const stack = [[r, c]];
-  while (stack.length) {
-    const [rr, cc] = stack.pop();
-    const cell = board[rr][cc];
-    if (cell.revealed || cell.flagged) continue;
-    cell.revealed = true;
-    revealedCount++;
-    paint(rr, cc);
-    if (cell.adj === 0) {
-      forNeighbors(rr, cc, (a, b) => {
-        if (!board[a][b].revealed && !board[a][b].flagged) stack.push([a, b]);
+    // ================= 网格布局算法 =================
+    function getGridLayout(poolSize) {
+      const maxN = Math.min(poolSize, 18);
+      for (let n = maxN; n >= 2; n--) {
+        const cards = n * 2;
+        let best = null;
+        for (let cols = 2; cols <= 6; cols++) {
+          if (cards % cols !== 0) continue;
+          const rows = cards / cols;
+          if (rows < 2 || rows > 6) continue;
+          const squareness = Math.abs(cols - rows);
+          if (!best || squareness < best.squareness || (squareness === best.squareness && cols > best.cols)) {
+            best = { cols, rows, squareness };
+          }
+        }
+        if (best) return { count: n, cols: best.cols, rows: best.rows };
+      }
+      return null;
+    }
+    function getGridStyleByCols(cols) {
+      const fontMap = { 2: 48, 3: 40, 4: 36, 5: 30, 6: 26 };
+      const widthMap = { 2: 220, 3: 320, 4: 420, 5: 500, 6: 560 };
+      return { font: (fontMap[cols] || 32) + 'px', maxWidth: (widthMap[cols] || 400) + 'px' };
+    }
+    function applyGridLayout(gridEl, layout) {
+      const style = getGridStyleByCols(layout.cols);
+      gridEl.style.setProperty('--grid-cols', layout.cols);
+      gridEl.style.setProperty('--grid-font', style.font);
+      gridEl.style.maxWidth = style.maxWidth;
+    }
+
+    // ================= 模式一：随机翻卡 =================
+    function generateRandomCard() {
+      randomCardData = allKanaItems[Math.floor(Math.random() * allKanaItems.length)];
+      isRandomFlipped = false; randomCard.classList.remove('flipped');
+      randomTraceContainer.classList.add('hidden');
+      if (randomCanvasInitialized) clearRandomTraceCanvas();
+      const showHiragana = Math.random() > 0.5;
+      randomCardFront.textContent = showHiragana ? randomCardData.h : randomCardData.k;
+      randomCardBackMain.textContent = randomCardData.h;
+      randomCardBackSub.textContent = randomCardData.k;
+      randomCardBackRomaji.textContent = randomCardData.r;
+    }
+    randomCard.addEventListener('click', () => {
+      if (!isRandomFlipped) {
+        isRandomFlipped = true; randomCard.classList.add('flipped');
+        if (randomCardData && randomCardData.h) speak(randomCardData.h);
+        randomTraceContainer.classList.remove('hidden');
+        randomTraceBg.textContent = `${randomCardData.h} ${randomCardData.k}`;
+        setTimeout(() => initRandomTraceCanvas(), 50);
+      } else {
+        if (randomCardData && randomCardData.h) speak(randomCardData.h);
+      }
+    });
+    nextRandomBtn.addEventListener('click', generateRandomCard);
+
+    function initRandomTraceCanvas() {
+      const rect = randomTraceCanvas.parentElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      randomTraceCanvas.style.width = rect.width + 'px'; randomTraceCanvas.style.height = rect.height + 'px';
+      const dpr = window.devicePixelRatio || 1;
+      randomTraceCanvas.width = rect.width * dpr; randomTraceCanvas.height = rect.height * dpr;
+      randomTraceCtx.setTransform(1, 0, 0, 1, 0, 0);
+      randomTraceCtx.scale(dpr, dpr); randomTraceCtx.lineCap = 'round'; randomTraceCtx.lineJoin = 'round';
+      randomTraceCtx.lineWidth = 4; randomTraceCtx.strokeStyle = '#4A90A4';
+      randomCanvasInitialized = true; clearRandomTraceCanvas();
+    }
+    function clearRandomTraceCanvas() {
+      if (!randomCanvasInitialized) return;
+      const dpr = window.devicePixelRatio || 1;
+      randomTraceCtx.clearRect(0, 0, randomTraceCanvas.width / dpr, randomTraceCanvas.height / dpr);
+    }
+    clearRandomTraceBtn.addEventListener('click', (e) => { e.stopPropagation(); clearRandomTraceCanvas(); });
+    function getRandomTraceCoords(e) {
+      const rect = randomTraceCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+    function startRandomDrawing(e) { e.preventDefault(); isRandomDrawing = true; const { x, y } = getRandomTraceCoords(e); randomLastX = x; randomLastY = y; }
+    function drawRandom(e) {
+      if (!isRandomDrawing) return; e.preventDefault();
+      const { x, y } = getRandomTraceCoords(e);
+      randomTraceCtx.beginPath(); randomTraceCtx.moveTo(randomLastX, randomLastY); randomTraceCtx.lineTo(x, y); randomTraceCtx.stroke();
+      randomLastX = x; randomLastY = y;
+    }
+    function stopRandomDrawing() { isRandomDrawing = false; }
+    randomTraceCanvas.addEventListener('mousedown', startRandomDrawing); randomTraceCanvas.addEventListener('mousemove', drawRandom);
+    randomTraceCanvas.addEventListener('mouseup', stopRandomDrawing); randomTraceCanvas.addEventListener('mouseleave', stopRandomDrawing);
+    randomTraceCanvas.addEventListener('touchstart', startRandomDrawing, { passive: false }); randomTraceCanvas.addEventListener('touchmove', drawRandom, { passive: false });
+    randomTraceCanvas.addEventListener('touchend', stopRandomDrawing); randomTraceCanvas.addEventListener('touchcancel', stopRandomDrawing);
+
+    // ================= 模式二：学习模式 =================
+    function getWeightedRandomItems(arr, n, masteredMap) {
+      const pool = [];
+      arr.forEach(item => { const weight = masteredMap[item.h] ? 1 : 2; for (let i = 0; i < weight; i++) pool.push(item); });
+      const result = []; const used = new Set();
+      while (result.length < n && pool.length > 0) {
+        const randomIndex = Math.floor(Math.random() * pool.length);
+        const item = pool[randomIndex];
+        if (!used.has(item.h)) { result.push(item); used.add(item.h); }
+        pool.splice(randomIndex, 1);
+      }
+      if (result.length < n) {
+        const remaining = arr.filter(item => !used.has(item.h));
+        const shuffled = [...remaining].sort(() => 0.5 - Math.random());
+        for (let i = 0; i < shuffled.length && result.length < n; i++) result.push(shuffled[i]);
+      }
+      return result.sort(() => 0.5 - Math.random());
+    }
+    function generateBatch() {
+      if (learnMasteredMode) {
+        currentBatch = allKanaItems.filter(i => mastered[i.h]);
+        cardStates = currentBatch.map(() => ({ revealed: true, initialType: 'h' }));
+        renderGrid(); updateStatus();
+        return;
+      }
+      const pool = allKanaItems;
+      let rawBatch = [];
+      if (Object.keys(mastered).length === 0) {
+        const shuffledGroups = [...similarGroups].sort(() => 0.5 - Math.random());
+        let combined = [];
+        for (let group of shuffledGroups) {
+          for (let h of group) { const item = pool.find(i => i.h === h || i.k === h); if (item) combined.push(item); }
+          if (combined.length >= 4) break;
+        }
+        const uniqueMap = {}; combined.forEach(item => uniqueMap[item.h] = item);
+        rawBatch = Object.values(uniqueMap).slice(0, 4);
+      }
+      if (rawBatch.length < 4) {
+        const countNeeded = 4 - rawBatch.length;
+        const existingH = new Set(rawBatch.map(i => i.h));
+        const remainingPool = pool.filter(i => !existingH.has(i.h));
+        rawBatch = rawBatch.concat(getWeightedRandomItems(remainingPool, countNeeded, mastered));
+      }
+      currentBatch = rawBatch.sort(() => 0.5 - Math.random());
+      const types = ['h', 'k', 'r'];
+      cardStates = currentBatch.map(() => ({ revealed: false, initialType: types[Math.floor(Math.random() * types.length)] }));
+      renderGrid(); updateStatus();
+    }
+    window.toggleMastered = function(h) {
+      if (mastered[h]) delete mastered[h];
+      else {
+        mastered[h] = true;
+        const count = allKanaItems.filter(i => mastered[i.h]).length;
+        if (count >= totalKanaCount) {
+          setTimeout(() => {
+            showAlert('🎉 恭喜', '您已掌握全部71个假名！进度将重置，出现概率恢复默认。');
+            mastered = {}; localStorage.setItem('kanaMastered', JSON.stringify(mastered));
+            learnMasteredMode = false; updateLearnModeUI(); generateBatch();
+          }, 100);
+          return;
+        }
+      }
+      localStorage.setItem('kanaMastered', JSON.stringify(mastered));
+      if (learnMasteredMode && allKanaItems.filter(i => mastered[i.h]).length === 0) {
+        learnMasteredMode = false;
+        updateLearnModeUI();
+        generateBatch();
+        return;
+      }
+      if (learnMasteredMode) {
+        updateLearnModeUI();
+        generateBatch();
+        return;
+      }
+      updateLearnModeUI(); updateStatus(); renderGrid();
+    };
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      grid.className = learnMasteredMode ? 'grid-container mastered-view' : 'grid-container';
+      grid.innerHTML = '';
+      currentBatch.forEach((item, index) => {
+        const state = cardStates[index];
+        const card = document.createElement('div');
+        card.className = `card ${state.revealed ? 'revealed' : ''}`;
+        card.addEventListener('click', () => {
+          clearTimeout(learnClickTimer);
+          learnClickTimer = setTimeout(() => {
+            if (!state.revealed) { state.revealed = true; renderGrid(); updateStatus(); }
+            speak(item.h);
+          }, 250);
+        });
+        card.addEventListener('dblclick', () => { clearTimeout(learnClickTimer); openWritingModal(item.h, item.k); });
+        let contentHTML = '';
+        if (!state.revealed) contentHTML = `<div class="card-main">${item[state.initialType]}</div>`;
+        else {
+          const isMastered = mastered[item.h];
+          contentHTML = `
+            <div class="card-revealed-content">
+              <div class="card-revealed-kana-row">
+                <span class="card-revealed-kana">${item.h}</span><span class="card-revealed-kana">${item.k}</span>
+              </div>
+              <div class="card-revealed-romaji">${item.r}</div>
+            </div>
+            <div class="${isMastered ? 'star-icon active' : 'star-icon'}" onclick="event.stopPropagation(); toggleMastered('${item.h}')">${isMastered ? '★' : '☆'}</div>`;
+        }
+        card.innerHTML = contentHTML; grid.appendChild(card);
       });
     }
-  }
-}
-
-/* ============ 插旗 ============ */
-function toggleFlag(r, c) {
-  if (gameOver) return;
-  const cell = board[r][c];
-  if (cell.revealed) return;
-  cell.flagged = !cell.flagged;
-  flags += cell.flagged ? 1 : -1;
-  paint(r, c);
-  updateMineCount();
-  checkWin();
-}
-
-function updateMineCount() {
-  mineEl.textContent = '💣 ' + Math.max(0, cfg.mines - flags);
-}
-
-/* ============ 计时 ============ */
-function startTimer() {
-  clearInterval(timerId);
-  timerId = setInterval(() => {
-    time++;
-    timerEl.textContent = '⏱ ' + time;
-  }, 1000);
-}
-function stopTimer() { clearInterval(timerId); timerId = null; }
-
-/* ============ 胜利判定（两种方式） ============ */
-function checkWin() {
-  if (gameOver) return;
-
-  let allMinesFlagged = true;
-  let wrongFlags = 0;
-  for (let r = 0; r < cfg.rows; r++) {
-    for (let c = 0; c < cfg.cols; c++) {
-      const cell = board[r][c];
-      if (cell.mine && !cell.flagged) allMinesFlagged = false;
-      if (!cell.mine && cell.flagged) wrongFlags++;
+    function updateStatus() {
+      const count = allKanaItems.filter(i => mastered[i.h]).length;
+      document.getElementById('masteredText').textContent = `已掌握 ${count} / ${totalKanaCount}`;
+      const revealedCount = cardStates.filter(s => s.revealed).length;
+      progressText.textContent = `本轮已翻开 ${revealedCount} / 4`;
     }
-  }
-  if (allMinesFlagged && wrongFlags === 0) {
-    win('完美！所有雷都标对了');
-    return;
-  }
+    function updateLearnModeUI() {
+      const cnt = allKanaItems.filter(i => mastered[i.h]).length;
+      learnMasteredChip.textContent = `已掌握(${cnt})`;
+      learnMasteredChip.classList.toggle('active', learnMasteredMode);
+      learnMasteredChip.disabled = (cnt === 0 && !learnMasteredMode);
+      progressText.style.display = learnMasteredMode ? 'none' : '';
+      nextBatchBtn.style.display = learnMasteredMode ? 'none' : '';
+      resetBtn.classList.toggle('hidden', !learnMasteredMode);
+      learnBackBtn.classList.toggle('hidden', !learnMasteredMode);
+    }
+    learnMasteredChip.addEventListener('click', () => {
+      if (learnMasteredMode) learnMasteredMode = false;
+      else {
+        if (allKanaItems.filter(i => mastered[i.h]).length === 0) return;
+        learnMasteredMode = true;
+      }
+      updateLearnModeUI(); generateBatch();
+    });
+    learnBackBtn.addEventListener('click', () => {
+      learnMasteredMode = false;
+      updateLearnModeUI(); generateBatch();
+    });
 
-  /* 翻开到只剩雷数时：随机抽一句 */
-  if (revealedCount === cfg.rows * cfg.cols - cfg.mines) {
-    win(randomQuote());
-    return;
-  }
-}
+    // ================= 模式三：五十音图表 =================
+    function buildTable(tableData) {
+      let html = '<table><tr><th></th>';
+      ['あ段', 'い段', 'う段', 'え段', 'お段'].forEach(col => html += `<th>${col}</th>`);
+      html += '</tr>';
+      tableData.forEach(row => {
+        html += `<tr><td class="chart-row-title">${row.row}</td>`;
+        row.cells.forEach(cell => {
+          if (!cell) html += '<td style="background: #FBFCFD; cursor: default;"></td>';
+          else {
+            const info = allKanaInfo[cell];
+            if (info) html += `<td data-h="${info.h}" data-k="${info.k}" data-r="${info.r}"><div class="chart-kana-row"><span class="chart-kana">${info.h}</span><span class="chart-kana">${info.k}</span></div><div class="chart-romaji">${info.r}</div></td>`;
+            else html += `<td>${cell}</td>`;
+          }
+        });
+        html += '</tr>';
+      });
+      return html + '</table>';
+    }
+    function renderChart() {
+      const chartContainer = document.getElementById('chartContainer');
+      let html = '<div class="section-title">清音</div>' + buildTable(seionTable);
+      html += '<div class="section-title">浊音</div>' + buildTable(dakuonTable);
+      html += '<div class="section-title">半浊音</div>' + buildTable(handakuonTable);
+      chartContainer.innerHTML = `<div class="chart-header"><button id="playChartBtn">播放</button></div>` + html;
+      document.getElementById('playChartBtn').addEventListener('click', togglePlayback);
+    }
+    function togglePlayback(e) {
+      if (e) e.stopPropagation();
+      if (isPlaying) stopPlayback(); else startPlayback();
+    }
+    function startPlayback() {
+      playSequence = [];
+      [seionTable, dakuonTable, handakuonTable].forEach(tableData => {
+        tableData.forEach(row => row.cells.forEach(cell => {
+          if (cell && allKanaInfo[cell]) playSequence.push({ h: allKanaInfo[cell].h });
+        }));
+      });
+      if (playSequence.length === 0) return;
+      isPlaying = true; playIndex = 0; updatePlayButtonState(true); playNext();
+    }
+    function playNext() {
+      if (!isPlaying || playIndex >= playSequence.length) { stopPlayback(); return; }
+      const item = playSequence[playIndex];
+      document.querySelectorAll('.playing-cell').forEach(el => el.classList.remove('playing-cell'));
+      const cell = document.querySelector(`td[data-h="${item.h}"]`);
+      if (cell) { cell.classList.add('playing-cell'); cell.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      speak(item.h); playIndex++; playTimer = setTimeout(playNext, 1200);
+    }
+    function stopPlayback() {
+      isPlaying = false; clearTimeout(playTimer); updatePlayButtonState(false);
+      document.querySelectorAll('.playing-cell').forEach(el => el.classList.remove('playing-cell'));
+    }
+    function updatePlayButtonState(playing) {
+      const btn = document.getElementById('playChartBtn'); if (!btn) return;
+      btn.textContent = playing ? '暂停' : '播放'; btn.classList.toggle('playing', playing);
+    }
+    document.addEventListener('click', (e) => {
+      if (!isPlaying) return;
+      if (e.target.closest('#playChartBtn')) return;
+      if (e.target.closest('#chartContainer td')) return;
+      stopPlayback();
+    });
+    document.getElementById('chartContainer').addEventListener('click', (e) => {
+      const td = e.target.closest('td'); if (!td || !td.dataset.h) return;
+      clearTimeout(chartClickTimer);
+      chartClickTimer = setTimeout(() => {
+        if (isPlaying) stopPlayback();
+        speak(td.dataset.h);
+      }, 250);
+    });
+    document.getElementById('chartContainer').addEventListener('dblclick', (e) => {
+      const td = e.target.closest('td'); if (!td || !td.dataset.h) return;
+      clearTimeout(chartClickTimer); stopPlayback();
+      openWritingModal(td.dataset.h, td.dataset.k);
+    });
 
-/* ============ 胜利处理 ============ */
-function win(msg) {
-  gameOver = true;
-  stopTimer();
-  faceEl.classList.add('won');
-  faceEl.innerHTML = ICON_WIN;
-
-  recalcNumbers();
-
-  for (let r = 0; r < cfg.rows; r++) {
-    for (let c = 0; c < cfg.cols; c++) {
-      const cell = board[r][c];
-      if (cell.mine) {
-        cell.flagged = true;
-        const el = cellEl(r, c);
-        el.className = 'cell win-mine';
-        el.textContent = '🚩';
+    // ================= 模式四：玩一下 =================
+    function showPlayMenu() {
+      playMenu.classList.remove('hidden');
+      matchGameView.classList.add('hidden');
+      flipGameView.classList.add('hidden');
+      catchGameView.classList.add('hidden');
+      fillGameView.classList.add('hidden');
+      catchIntroOverlay.classList.add('hidden');
+      document.getElementById('catchGameOverModal').classList.add('hidden');
+      modeSelectModal.classList.add('hidden');
+      stopCatchGame();
+      fillAnswered = false;
+    }
+    function getMasteredPool() {
+      return allKanaItems.filter(item => mastered[item.h]);
+    }
+    function showModeSelect(gameType) {
+      pendingGameType = gameType;
+      const masteredPool = getMasteredPool();
+      const needMinPool = (gameType === 'match' || gameType === 'flip');
+      let disabled = false, label = '';
+      if (masteredPool.length === 0) {
+        disabled = true;
+        label = '练习已掌握的词（暂无）';
+      } else if (needMinPool && masteredPool.length < 2) {
+        disabled = true;
+        label = '练习已掌握的词（不足 2 个）';
       } else {
-        paint(r, c);
+        disabled = false;
+        label = `练习已掌握的词（${masteredPool.length}个）`;
+      }
+      selectMasteredBtn.disabled = disabled;
+      selectMasteredBtn.textContent = label;
+      modeSelectModal.classList.remove('hidden');
+    }
+    function closeModeSelect() {
+      modeSelectModal.classList.add('hidden');
+      pendingGameType = null;
+    }
+    function launchGame(gameType) {
+      if (gameType === 'match') startMatchGame();
+      else if (gameType === 'flip') startFlipGame();
+      else if (gameType === 'catch') startCatchGame();
+      else if (gameType === 'fill') startFillGame();
+    }
+    selectMasteredBtn.addEventListener('click', () => {
+      const pool = getMasteredPool();
+      if (pool.length === 0) return;
+      if ((pendingGameType === 'match' || pendingGameType === 'flip') && pool.length < 2) return;
+      activeKanaPool = pool;
+      const gameType = pendingGameType;
+      closeModeSelect();
+      launchGame(gameType);
+    });
+    selectRandomBtn.addEventListener('click', () => {
+      activeKanaPool = allKanaItems;
+      const gameType = pendingGameType;
+      closeModeSelect();
+      launchGame(gameType);
+    });
+    cancelSelectBtn.addEventListener('click', closeModeSelect);
+
+    // --- 连连看 ---
+    function startMatchGame() {
+      playMenu.classList.add('hidden'); matchGameView.classList.remove('hidden');
+      initMatchGame();
+    }
+    function initMatchGame() {
+      matchCards = []; matchSelected = [];
+      const pool = [...activeKanaPool].sort(() => 0.5 - Math.random());
+      const layout = getGridLayout(pool.length);
+      if (!layout) { showPlayMenu(); return; }
+      applyGridLayout(matchGrid, layout);
+      const selectedItems = pool.slice(0, layout.count);
+      selectedItems.forEach(item => {
+        matchCards.push({ id: item.h + '_h', text: item.h, matchId: item.h });
+        matchCards.push({ id: item.k + '_k', text: item.k, matchId: item.h });
+      });
+      matchCards.sort(() => 0.5 - Math.random());
+      renderMatchGrid();
+    }
+    function renderMatchGrid() {
+      matchGrid.innerHTML = '';
+      matchCards.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = 'match-card' + (card.matched ? ' matched' : '') + (matchSelected.includes(index) ? ' selected' : '');
+        div.textContent = card.text;
+        div.addEventListener('click', () => handleMatchClick(index));
+        matchGrid.appendChild(div);
+      });
+    }
+    function handleMatchClick(index) {
+      const card = matchCards[index];
+      if (card.matched) return;
+      const selectedIndex = matchSelected.indexOf(index);
+      if (selectedIndex > -1) matchSelected.splice(selectedIndex, 1);
+      else {
+        if (matchSelected.length >= 2) matchSelected = [];
+        matchSelected.push(index);
+      }
+      if (matchSelected.length === 2) {
+        const idx1 = matchSelected[0], idx2 = matchSelected[1];
+        const card1 = matchCards[idx1], card2 = matchCards[idx2];
+        if (card1.matchId === card2.matchId && card1.id !== card2.id) {
+          card1.matched = true; card2.matched = true;
+          speak(card1.matchId);
+        }
+        matchSelected = [];
+      }
+      renderMatchGrid();
+      if (matchCards.every(c => c.matched)) {
+        setTimeout(() => { showAlert('🎉 太棒了', '你完成了连连看！'); initMatchGame(); }, 300);
       }
     }
-  }
-  flags = cfg.mines;
-  updateMineCount();
 
-  /* 累计通关次数 */
-  winCount++;
-  safeSet('minesweeper_win_count', String(winCount));
-
-  /* 第 101 局及以后：只要还没关闭过长信，就一定会弹出来 */
-  if (winCount >= 101 && !letterShown) {
-    showToast(msg);
-    setTimeout(openLetter, 900);
-  } else {
-    showToast(msg);
-  }
-}
-
-/* ============ 隐藏长信弹窗 ============ */
-function openLetter() {
-  letterOverlay.classList.add('show');
-}
-
-/* 双击底部日期关闭（400ms 内两次点击才算） */
-let dateClickTimer = null;
-let dateClickCount = 0;
-letterDateEl.addEventListener('click', () => {
-  dateClickCount++;
-  clearTimeout(dateClickTimer);
-  if (dateClickCount >= 2) {
-    dateClickCount = 0;
-    letterOverlay.classList.remove('show');
-    letterShown = true;
-    safeSet('minesweeper_letter_shown', '1');
-  } else {
-    dateClickTimer = setTimeout(() => { dateClickCount = 0; }, 400);
-  }
-});
-
-/* ============ 点击处理（点哪都不会是雷） ============ */
-boardEl.addEventListener('click', (e) => {
-  if (suppressClick) { suppressClick = false; return; }
-  const el = e.target.closest('.cell');
-  if (!el || gameOver) return;
-
-  const r = +el.dataset.r, c = +el.dataset.c;
-  const cell = board[r][c];
-  if (cell.flagged || cell.revealed) return;
-
-  if (!started) {
-    started = true;
-    placeMines(r, c);
-    startTimer();
-  }
-
-  if (cell.mine) {
-    const moved = relocateMine(r, c);
-    if (moved) {
-      recalcNumbers();
-      repaintAll();
+    // --- 翻牌子 ---
+    function startFlipGame() {
+      playMenu.classList.add('hidden'); flipGameView.classList.remove('hidden');
+      initFlipGame();
     }
-  }
+    function initFlipGame() {
+      flipCards = []; flipFirstPick = null; flipLocked = false;
+      const pool = [...activeKanaPool].sort(() => 0.5 - Math.random());
+      const layout = getGridLayout(pool.length);
+      if (!layout) { showPlayMenu(); return; }
+      applyGridLayout(flipGrid, layout);
+      const selectedItems = pool.slice(0, layout.count);
+      selectedItems.forEach(item => {
+        flipCards.push({ text: item.h, matchId: item.h, matched: false, flipped: false });
+        flipCards.push({ text: item.k, matchId: item.h, matched: false, flipped: false });
+      });
+      flipCards.sort(() => 0.5 - Math.random());
+      renderFlipGrid();
+    }
+    function renderFlipGrid() {
+      flipGrid.innerHTML = '';
+      flipCards.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = 'flip-card';
+        if (card.matched) div.classList.add('matched');
+        else if (card.flipped) div.classList.add('flipped');
+        if (card.flipped || card.matched) div.textContent = card.text;
+        else div.textContent = '?';
+        div.addEventListener('click', () => handleFlipClick(index));
+        flipGrid.appendChild(div);
+      });
+    }
+    function handleFlipClick(index) {
+      if (flipLocked) return;
+      const card = flipCards[index];
+      if (card.matched || card.flipped) return;
+      card.flipped = true;
+      renderFlipGrid();
+      if (flipFirstPick === null) { flipFirstPick = index; return; }
+      const firstCard = flipCards[flipFirstPick];
+      const secondCard = card;
+      if (firstCard.matchId === secondCard.matchId && flipFirstPick !== index) {
+        firstCard.matched = true; secondCard.matched = true;
+        speak(firstCard.matchId);
+        flipFirstPick = null;
+        renderFlipGrid();
+        if (flipCards.every(c => c.matched)) {
+          setTimeout(() => { showAlert('🎉 太棒了', '你完成了翻牌子！'); initFlipGame(); }, 300);
+        }
+      } else {
+        flipLocked = true;
+        setTimeout(() => {
+          firstCard.flipped = false; secondCard.flipped = false;
+          flipLocked = false; flipFirstPick = null;
+          renderFlipGrid();
+        }, 800);
+      }
+    }
 
-  floodReveal(r, c);
-  checkWin();
-});
+    // --- 接住它 ---
+    function startCatchGame() {
+      playMenu.classList.add('hidden'); catchGameView.classList.remove('hidden');
+      document.getElementById('catchGameOverModal').classList.add('hidden');
+      stopCatchGame();
+      currentCatchIntroItem = activeKanaPool[Math.floor(Math.random() * activeKanaPool.length)];
+      catchIntroH.textContent = currentCatchIntroItem.h;
+      catchIntroK.textContent = currentCatchIntroItem.k;
+      catchIntroR.textContent = currentCatchIntroItem.r;
+      catchIntroOverlay.classList.remove('hidden');
+    }
+    catchIntroHCard.addEventListener('click', () => { if (currentCatchIntroItem) speak(currentCatchIntroItem.h); });
+    catchIntroKCard.addEventListener('click', () => { if (currentCatchIntroItem) speak(currentCatchIntroItem.h); });
+    catchIntroRCard.addEventListener('click', () => { if (currentCatchIntroItem) speak(currentCatchIntroItem.h); });
+    catchStartBtn.addEventListener('click', () => {
+      catchIntroOverlay.classList.add('hidden');
+      catchTargetItem = currentCatchIntroItem;
+      catchLives = 5; catchItems = []; catchSpawnTimer = 0; catchScore = 0;
+      const rect = catchCanvas.getBoundingClientRect();
+      if (rect.width) { catchCanvas.width = rect.width; catchCanvas.height = rect.height; }
+      catchBoxX = catchCanvas.width / 2;
+      updateCatchHUD();
+      catchGameActive = true;
+      lastCatchTime = performance.now();
+      catchAnimationFrame = requestAnimationFrame(catchGameLoop);
+    });
+    function updateCatchHUD() {
+      let heartsHtml = '';
+      for (let i = 0; i < catchLives; i++) {
+        heartsHtml += '<span style="color: #3E7E6E; font-size: 20px; font-weight: bold; line-height: 1; margin-right: 2px;">♡</span>';
+      }
+      catchLivesSpan.innerHTML = heartsHtml;
+      if (catchScoreSpan) catchScoreSpan.textContent = catchScore;
+    }
+    function stopCatchGame() {
+      catchGameActive = false;
+      if (catchAnimationFrame) cancelAnimationFrame(catchAnimationFrame);
+      catchAnimationFrame = null;
+    }
+    function catchGameLoop(time) {
+      if (!catchGameActive) return;
+      const dt = (time - lastCatchTime) / 1000; lastCatchTime = time;
+      catchSpawnTimer += dt;
+      const maxOnScreen = 6;
+      if (catchSpawnTimer > 0.5) {
+        catchSpawnTimer = 0;
+        if (catchItems.length < maxOnScreen) {
+          let char;
+          if (Math.random() < 0.5) {
+            const types = ['h', 'k', 'r'];
+            char = catchTargetItem[types[Math.floor(Math.random() * types.length)]];
+          } else {
+            let item;
+            do { item = allKanaItems[Math.floor(Math.random() * allKanaItems.length)]; }
+            while (item.h === catchTargetItem.h);
+            const types = ['h', 'k', 'r'];
+            char = item[types[Math.floor(Math.random() * types.length)]];
+          }
+          const dropSpeed = Math.min(120 + catchScore * 4, 280);
+          catchItems.push({ x: Math.random() * (catchCanvas.width - 40) + 20, y: -20, char: char, speed: dropSpeed });
+        }
+      }
+      catchItems.forEach(e => e.y += e.speed * dt);
+      const boxY = catchCanvas.height - 60;
+      for (let i = catchItems.length - 1; i >= 0; i--) {
+        const item = catchItems[i];
+        const isTarget = (item.char === catchTargetItem.h || item.char === catchTargetItem.k || item.char === catchTargetItem.r);
+        if (item.y >= boxY - 15 && item.y <= boxY + 20) {
+          if (item.x >= catchBoxX - catchBoxWidth / 2 && item.x <= catchBoxX + catchBoxWidth / 2) {
+            if (isTarget) { speak(catchTargetItem.h); catchScore++; updateCatchHUD(); }
+            else {
+              catchLives--; updateCatchHUD();
+              if (catchLives <= 0) {
+                stopCatchGame();
+                document.getElementById('catchGameOverModal').classList.remove('hidden');
+                return;
+              }
+            }
+            catchItems.splice(i, 1); continue;
+          }
+        }
+        if (item.y > catchCanvas.height + 20) catchItems.splice(i, 1);
+      }
+      drawCatchGame();
+      if (catchGameActive) catchAnimationFrame = requestAnimationFrame(catchGameLoop);
+    }
+    function drawCatchGame() {
+      const rect = catchCanvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      if (catchCanvas.width !== rect.width || catchCanvas.height !== rect.height) {
+        catchCanvas.width = rect.width; catchCanvas.height = rect.height;
+      }
+      catchCtx.clearRect(0, 0, catchCanvas.width, catchCanvas.height);
+      catchCtx.font = '32px "Klee One", sans-serif'; catchCtx.textAlign = 'center'; catchCtx.textBaseline = 'middle';
+      catchItems.forEach(e => { catchCtx.fillStyle = '#2C3E44'; catchCtx.fillText(e.char, e.x, e.y); });
+      const boxY = catchCanvas.height - 60;
+      const boxW = catchBoxWidth, boxH = 18, radius = 8;
+      catchCtx.strokeStyle = '#2C3E44'; catchCtx.lineWidth = 4; catchCtx.lineCap = 'round';
+      catchCtx.beginPath();
+      catchCtx.moveTo(catchBoxX - boxW/2, boxY);
+      catchCtx.lineTo(catchBoxX - boxW/2, boxY + boxH - radius);
+      catchCtx.quadraticCurveTo(catchBoxX - boxW/2, boxY + boxH, catchBoxX - boxW/2 + radius, boxY + boxH);
+      catchCtx.lineTo(catchBoxX + boxW/2 - radius, boxY + boxH);
+      catchCtx.quadraticCurveTo(catchBoxX + boxW/2, boxY + boxH, catchBoxX + boxW/2, boxY + boxH - radius);
+      catchCtx.lineTo(catchBoxX + boxW/2, boxY);
+      catchCtx.stroke();
+    }
+    catchCanvas.addEventListener('mousemove', (e) => {
+      if (!catchGameActive) return;
+      const rect = catchCanvas.getBoundingClientRect();
+      catchBoxX = e.clientX - rect.left;
+      catchBoxX = Math.max(catchBoxWidth / 2, Math.min(catchCanvas.width - catchBoxWidth / 2, catchBoxX));
+    });
+    catchCanvas.addEventListener('touchmove', (e) => {
+      if (!catchGameActive) return;
+      e.preventDefault();
+      const rect = catchCanvas.getBoundingClientRect();
+      catchBoxX = e.touches[0].clientX - rect.left;
+      catchBoxX = Math.max(catchBoxWidth / 2, Math.min(catchCanvas.width - catchBoxWidth / 2, catchBoxX));
+    });
+    catchBackBtn.addEventListener('click', showPlayMenu);
+    catchRestartBtn.addEventListener('click', () => {
+      stopCatchGame();
+      document.getElementById('catchGameOverModal').classList.add('hidden');
+      startCatchGame();
+    });
+    document.getElementById('catchGameOverModal').addEventListener('click', () => {
+      document.getElementById('catchGameOverModal').classList.add('hidden');
+    });
 
-boardEl.addEventListener('contextmenu', (e) => {
-  e.preventDefault();
-  if (gameOver) return;
-  const el = e.target.closest('.cell');
-  if (!el) return;
-  toggleFlag(+el.dataset.r, +el.dataset.c);
-});
+    // --- 填空 ---
+    function startFillGame() {
+      playMenu.classList.add('hidden');
+      fillGameView.classList.remove('hidden');
+      fillScore = 0; fillErrors = 0; fillResult.textContent = '';
+      updateFillHUD(); nextFillQuestion();
+      setTimeout(() => fillInput.focus(), 100);
+    }
+    function nextFillQuestion() {
+      currentFillItem = activeKanaPool[Math.floor(Math.random() * activeKanaPool.length)];
+      const types = ['h', 'k', 'r'];
+      fillPromptType = types[Math.floor(Math.random() * types.length)];
+      fillPrompt.textContent = currentFillItem[fillPromptType];
+      fillInput.innerHTML = ''; fillErrors = 0; fillResult.innerHTML = '';
+      fillAnswered = false; updateFillHUD();
+    }
+    function updateFillHUD() {
+      fillScoreSpan.textContent = fillScore;
+      fillErrorsSpan.textContent = fillErrors + ' / 3';
+    }
+    function getFillValidAnswers() {
+      const item = currentFillItem;
+      const answers = [];
+      if (fillPromptType !== 'h') answers.push({ value: item.h, label: '平假名' });
+      if (fillPromptType !== 'k') answers.push({ value: item.k, label: '片假名' });
+      if (fillPromptType !== 'r') answers.push({ value: item.r, label: '读音' });
+      return answers;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function matchSegments(input, validValues) {
+      const result = [];
+      const sorted = [...validValues].sort((a, b) => b.length - a.length);
+      let i = 0;
+      while (i < input.length) {
+        if (/\s/.test(input[i])) { result.push({ text: input[i], ok: true, space: true }); i++; continue; }
+        let matched = false;
+        for (const v of sorted) {
+          if (input.substr(i, v.length).toLowerCase() === v.toLowerCase()) {
+            result.push({ text: input.substr(i, v.length), ok: true });
+            i += v.length; matched = true; break;
+          }
+        }
+        if (!matched) { result.push({ text: input[i], ok: false }); i++; }
+      }
+      return result;
+    }
+    function checkFillAnswer() {
+      if (fillAnswered) return;
+      const rawInput = fillInput.textContent.trim();
+      if (!rawInput) return;
+      const validAnswers = getFillValidAnswers();
+      const validValues = validAnswers.map(a => a.value);
+      const segments = matchSegments(rawInput, validValues);
+      const allCorrect = segments.length > 0 && segments.every(s => s.ok);
+      if (allCorrect) {
+        fillAnswered = true; fillScore++; updateFillHUD();
+        fillResult.innerHTML = '<span style="color: #5FAF92;">✅ 正确！</span>';
+        speak(currentFillItem.h);
+        setTimeout(() => { nextFillQuestion(); setTimeout(() => fillInput.focus(), 50); }, 600);
+        return;
+      }
+      fillErrors++;
+      if (fillErrors > 3) fillErrors = 3;
+      const html = segments.map(s => {
+        const escaped = escapeHtml(s.text);
+        if (s.space) return escaped;
+        return `<span class="${s.ok ? 'ok' : 'err'}">${escaped}</span>`;
+      }).join('');
+      fillInput.innerHTML = html;
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(fillInput); range.collapse(false);
+      sel.removeAllRanges(); sel.addRange(range);
+      if (fillErrors >= 3) {
+        const answerText = validAnswers.map(a => `${a.label}「${escapeHtml(a.value)}」`).join(' 或 ');
+        fillResult.innerHTML = `<span style="color:#E08888;">${answerText}</span>`;
+      } else {
+        fillResult.innerHTML = `<span style="color:#E08888;">❌ 标红的字符有误，请修改（${fillErrors}/3）</span>`;
+      }
+      updateFillHUD();
+    }
+    fillCheckBtn.addEventListener('click', checkFillAnswer);
+    fillInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); checkFillAnswer(); }
+    });
+    fillInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      document.execCommand('insertText', false, text);
+    });
+    fillRestartBtn.addEventListener('click', startFillGame);
+    fillBackBtn.addEventListener('click', showPlayMenu);
 
-/* 移动端：长按插旗 */
-boardEl.addEventListener('touchstart', (e) => {
-  const el = e.target.closest('.cell');
-  if (!el || gameOver) return;
-  suppressClick = false;
-  longPressTimer = setTimeout(() => {
-    suppressClick = true;
-    toggleFlag(+el.dataset.r, +el.dataset.c);
-  }, 350);
-}, { passive: true });
+    startMatchGameBtn.addEventListener('click', () => showModeSelect('match'));
+    startFlipGameBtn.addEventListener('click', () => showModeSelect('flip'));
+    startCatchGameBtn.addEventListener('click', () => showModeSelect('catch'));
+    startFillGameBtn.addEventListener('click', () => showModeSelect('fill'));
 
-boardEl.addEventListener('touchend', () => {
-  clearTimeout(longPressTimer);
-  setTimeout(() => { suppressClick = false; }, 300);
-}, { passive: true });
+    matchBackBtn.addEventListener('click', showPlayMenu);
+    matchRestartBtn.addEventListener('click', initMatchGame);
+    flipBackBtn.addEventListener('click', showPlayMenu);
+    flipRestartBtn.addEventListener('click', initFlipGame);
 
-boardEl.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
+    // ================= 书写弹窗 =================
+    window.openWritingModal = function(h, k) {
+      currentModalH = h; stopModalLoop(); traceBg.textContent = `${h} ${k}`;
+      writingModal.classList.remove('hidden');
+      setTimeout(() => { initCanvas(); }, 50);
+    };
+    modalPlayBtn.addEventListener('click', () => {
+      clearTimeout(modalClickTimer);
+      modalClickTimer = setTimeout(() => {
+        if (isModalLooping) stopModalLoop();
+        else if (currentModalH) speak(currentModalH);
+      }, 250);
+    });
+    modalPlayBtn.addEventListener('dblclick', () => {
+      clearTimeout(modalClickTimer);
+      if (isModalLooping) stopModalLoop(); else startModalLoop();
+    });
+    function startModalLoop() {
+      if (!currentModalH) return; stopModalLoop();
+      isModalLooping = true; modalPlayBtn.textContent = '暂停'; modalPlayBtn.style.background = '#E08888';
+      speak(currentModalH);
+      modalLoopTimer = setInterval(() => speak(currentModalH), 1500);
+    }
+    function stopModalLoop() {
+      isModalLooping = false; clearInterval(modalLoopTimer);
+      modalPlayBtn.textContent = '播放'; modalPlayBtn.style.background = '#4A90A4';
+    }
+    function closeWritingModal() { writingModal.classList.add('hidden'); isDrawing = false; stopModalLoop(); }
+    function initCanvas() {
+      const container = canvas.parentElement; const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#4A90A4';
+      canvasInitialized = true; clearCanvas();
+    }
+    function clearCanvas() {
+      if (!canvasInitialized) return;
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    }
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+    function startDrawing(e) { e.preventDefault(); isDrawing = true; const { x, y } = getCanvasCoords(e); lastX = x; lastY = y; }
+    function draw(e) {
+      if (!isDrawing) return; e.preventDefault();
+      const { x, y } = getCanvasCoords(e);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+      lastX = x; lastY = y;
+    }
+    function stopDrawing() { isDrawing = false; }
+    canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseleave', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing); canvas.addEventListener('touchcancel', stopDrawing);
+    closeModalBtn.addEventListener('click', closeWritingModal);
+    clearCanvasBtn.addEventListener('click', clearCanvas);
+    writingModal.addEventListener('click', (e) => { if (e.target === writingModal) closeWritingModal(); });
 
-/* 难度切换 */
-document.querySelectorAll('.toolbar button').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.toolbar button').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    cfg = LEVELS[btn.dataset.level];
-    newGame();
-  });
-});
+    // ================= 重置进度确认弹窗 =================
+    resetBtn.addEventListener('click', () => {
+      resetConfirmModal.classList.remove('hidden');
+    });
+    resetCancelBtn.addEventListener('click', () => {
+      resetConfirmModal.classList.add('hidden');
+    });
+    resetConfirmBtn.addEventListener('click', () => {
+      resetConfirmModal.classList.add('hidden');
+      mastered = {};
+      localStorage.setItem('kanaMastered', JSON.stringify(mastered));
+      learnMasteredMode = false;
+      updateLearnModeUI(); updateStatus();
+      if (currentMode === 'learn') generateBatch();
+    });
+    resetConfirmModal.addEventListener('click', (e) => {
+      if (e.target === resetConfirmModal) resetConfirmModal.classList.add('hidden');
+    });
 
-faceEl.addEventListener('click', newGame);
+    // ================= 模式切换 =================
+    function switchMode(mode) {
+      currentMode = mode;
+      modeRandomBtn.classList.toggle('active', mode === 'random');
+      modeLearnBtn.classList.toggle('active', mode === 'learn');
+      modeChartBtn.classList.toggle('active', mode === 'chart');
+      modePlayBtn.classList.toggle('active', mode === 'play');
+      randomView.classList.toggle('hidden', mode !== 'random');
+      learnView.classList.toggle('hidden', mode !== 'learn');
+      chartView.classList.toggle('hidden', mode !== 'chart');
+      playView.classList.toggle('hidden', mode !== 'play');
+      if (mode !== 'chart') stopPlayback(); else renderChart();
+      stopModalLoop();
+      stopCatchGame();
+      resetConfirmModal.classList.add('hidden');
+      if (mode === 'random') generateRandomCard();
+      if (mode === 'learn') { updateLearnModeUI(); generateBatch(); }
+      if (mode === 'play') showPlayMenu();
+    }
+    modeRandomBtn.addEventListener('click', () => switchMode('random'));
+    modeLearnBtn.addEventListener('click', () => switchMode('learn'));
+    modeChartBtn.addEventListener('click', () => switchMode('chart'));
+    modePlayBtn.addEventListener('click', () => switchMode('play'));
+    document.getElementById('nextBatchBtn').addEventListener('click', generateBatch);
 
-/* 启动 */
-newGame();
-</script>
+    // ================= resize =================
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (canvasInitialized && !writingModal.classList.contains('hidden')) initCanvas();
+        if (randomCanvasInitialized && !randomTraceContainer.classList.contains('hidden')) initRandomTraceCanvas();
+      }, 300);
+    });
+
+    // 启动
+    updateLearnModeUI();
+    switchMode('random');
+  </script>
 </body>
 </html>
